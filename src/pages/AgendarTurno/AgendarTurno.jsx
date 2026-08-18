@@ -237,6 +237,26 @@ export default function AgendarTurno() {
     </Box>
   )
 
+  const botonWhatsApp = (() => {
+    const url = waLinkTaller(waMensajeTurno(form.nombre.trim() || 'quiero'))
+    return (
+      <Button
+        component="a"
+        href={url ?? undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="outlined"
+        color="success"
+        size="large"
+        fullWidth
+        startIcon={<WhatsAppIcon />}
+        disabled={!url}
+      >
+        Pedir turno por WhatsApp
+      </Button>
+    )
+  })()
+
   return (
     <Box sx={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       <Box
@@ -380,6 +400,15 @@ export default function AgendarTurno() {
                           Solo lo usamos para confirmar tu turno. Nunca lo compartimos.
                         </Typography>
                       </Stack>
+                      <Divider sx={{ my: 3 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          o
+                        </Typography>
+                      </Divider>
+                      {botonWhatsApp}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                        Preferís agendar hablando con alguien? El asistente de WhatsApp te ayuda.
+                      </Typography>
                     </>
                   )}
 
@@ -621,20 +650,7 @@ export default function AgendarTurno() {
                           o
                         </Typography>
                       </Divider>
-                      <Button
-                        component="a"
-                        href={waLinkTaller(waMensajeTurno(form.nombre.trim() || 'quiero')) ?? undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="outlined"
-                        color="success"
-                        size="large"
-                        fullWidth
-                        startIcon={<WhatsAppIcon />}
-                        disabled={!waLinkTaller(waMensajeTurno(form.nombre.trim() || 'quiero'))}
-                      >
-                        Pedir turno por WhatsApp
-                      </Button>
+                      {botonWhatsApp}
                     </>
                   )}
                 </Box>
