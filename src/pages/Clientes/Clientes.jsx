@@ -32,6 +32,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility'
 import GroupIcon from '@mui/icons-material/Group'
 import PersonIcon from '@mui/icons-material/Person'
 import ReceiptIcon from '@mui/icons-material/Receipt'
+import PaymentsIcon from '@mui/icons-material/Payments'
 import { createCliente, deleteCliente, getCliente, importClientes, listClientes, updateCliente, updateVehiculo, agregarVehiculoCliente, quitarVehiculoCliente } from '../../services/clientesApi'
 import { createPago } from '../../services/cajaApi'
 import { usePaginatedData } from '../../hooks/usePaginatedData'
@@ -46,6 +47,7 @@ import Pagination from '../../components/Pagination'
 import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import VehiculoFormFields from '../../components/VehiculoFormFields'
+import TicketDialog from '../../components/TicketDialog'
 import { waLink } from '../../utils/wa'
 import { plural, fmtMoney, fmtDate, fmtDateTime, parseNumero } from '../../utils/format'
 import { ordenEstadoMeta, pagoMetodoMeta } from '../../utils/meta'
@@ -66,8 +68,11 @@ export default function Clientes() {
   const [deleteVehTarget, setDeleteVehTarget] = useState(null)
   const [deleteVehBusy, setDeleteVehBusy] = useState(false)
   const [cobroTarget, setCobroTarget] = useState(null)
+  const [cobroOrdenes, setCobroOrdenes] = useState([])
+  const [cobroClienteNombre, setCobroClienteNombre] = useState('')
   const [cobroForm, setCobroForm] = useState({ monto: '', metodo: 'efectivo', referencia: '' })
   const [cobrando, setCobrando] = useState(false)
+  const [ticket, setTicket] = useState(null)
 
   const clientes = usePaginatedData(listClientes, { errorMessage: 'No se pudieron cargar los clientes.' })
   const filtered = clientes.rows
@@ -209,9 +214,32 @@ export default function Clientes() {
     }
   }
 
-  const openCobro = (orden) => {
+  const openCobro = (orden, nombre) => {
+    setCobroOrdenes([orden])
+    setCobroClienteNombre(nombre)
     setCobroTarget(orden)
     setCobroForm({ monto: String(orden.saldo_pendiente ?? ''), metodo: 'efectivo', referencia: '' })
+  }
+
+  // Cobro directo desde la lista: carga las órdenes con saldo del cliente y
+  // abre el diálogo con un selector si hay más de una.
+  const openCobroCliente = async (cliente) => {
+    try {
+      const full = await getCliente(cliente.id)
+      const ordenes = (full.vehiculos ?? [])
+        .flatMap((v) => (v.ordenesTrabajo ?? []).filter((o) => Number(o.saldo_pendiente ?? 0) > 0).map((o) => ({ ...o, vehiculo: v })))
+        .sort((a, b) => a.id - b.id)
+      if (ordenes.length === 0) {
+        notify.info('Este cliente no tiene saldos pendientes.')
+        return
+      }
+      setCobroOrdenes(ordenes)
+      setCobroClienteNombre(cliente.nombre)
+      setCobroTarget(ordenes[0])
+      setCobroForm({ monto: String(ordenes[0].saldo_pendiente ?? ''), metodo: 'efectivo', referencia: '' })
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'No se pudieron cargar las deudas del cliente.')
+    }
   }
 
   const confirmCobro = async () => {
@@ -226,9 +254,25 @@ export default function Clientes() {
     }
     setCobrando(true)
     try {
-      await createPago({ orden_id: cobroTarget.id, monto, metodo: cobroForm.metodo, referencia: cobroForm.referencia || null })
+      const pago = await createPago({ orden_id: cobroTarget.id, monto, metodo: cobroForm.metodo, referencia: cobroForm.referencia || null })
       notify.success('Cobro registrado.')
       setCobroTarget(null)
+      setCobroOrdenes([])
+      // Comprobante listo para imprimir, usando el movimiento recién creado.
+      setTicket({
+        titulo: 'Comprobante de cobro',
+        numero: pago.id,
+        fecha: fmtDateTime(pago.fecha),
+        meta: [
+          { label: 'Cliente', value: pago.orden_trabajo?.cliente?.nombre ?? pago.orden_trabajo?.vehiculo?.cliente?.nombre ?? cobroClienteNombre },
+          { label: 'Orden', value: `#${pago.orden_trabajo?.id ?? cobroTarget.id}` },
+          { label: 'Método', value: pagoMetodoMeta[pago.metodo]?.label ?? pago.metodo },
+          ...(pago.referencia ? [{ label: 'Referencia', value: pago.referencia }] : []),
+        ],
+        items: [],
+        totales: [{ label: 'Cobrado', value: fmtMoney(pago.monto ?? monto) }],
+        notas: [],
+      })
       // Refresca la deuda en el listado y el historial del modal abierto.
       const clienteId = clienteModal?.cliente?.id
       await clientes.reload()
@@ -325,6 +369,7 @@ export default function Clientes() {
                   onView={() => openCliente(cliente, 'ver')}
                   onEdit={() => openCliente(cliente, 'editar')}
                   onDelete={() => setDeleteClienteTarget(cliente)}
+                  onCobrar={() => openCobroCliente(cliente)}
                 />
               ))}
             </TableBody>
@@ -431,7 +476,7 @@ export default function Clientes() {
               onAddVeh={() => openVehiculo(clienteModal.cliente)}
               onEditVeh={(veh) => openVehiculo(clienteModal.cliente, veh)}
               onDeleteVeh={(veh) => setDeleteVehTarget({ cliente: clienteModal.cliente, veh })}
-              onCobrar={openCobro}
+              onCobrar={(orden) => openCobro(orden, clienteModal.cliente?.nombre)}
             />
           )
         )}
@@ -464,15 +509,15 @@ export default function Clientes() {
 
       <AppDialog
         open={Boolean(cobroTarget)}
-        onClose={() => setCobroTarget(null)}
-        title={`Cobrar orden #${cobroTarget?.id}`}
-        subtitle="Registrá el pago de la orden."
+        onClose={() => { setCobroTarget(null); setCobroOrdenes([]) }}
+        title={`Cobrar ${cobroClienteNombre || `orden #${cobroTarget?.id}`}`}
+        subtitle={cobroOrdenes.length > 1 ? 'El cliente tiene varias deudas: elegí cuál cobrar.' : 'Registrá el pago de la orden.'}
         icon={<ReceiptIcon />}
         iconBg="success.main"
         maxWidth="xs"
         actions={
           <>
-            <Button onClick={() => setCobroTarget(null)} disabled={cobrando}>Cancelar</Button>
+            <Button onClick={() => { setCobroTarget(null); setCobroOrdenes([]) }} disabled={cobrando}>Cancelar</Button>
             <Button onClick={confirmCobro} variant="contained" color="success" disabled={cobrando}>
               {cobrando ? 'Registrando…' : 'Registrar cobro'}
             </Button>
@@ -480,6 +525,27 @@ export default function Clientes() {
         }
       >
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {cobroOrdenes.length > 1 && (
+            <TextField
+              select
+              label="Orden a cobrar"
+              value={cobroTarget?.id ?? ''}
+              onChange={(e) => {
+                const orden = cobroOrdenes.find((o) => o.id === Number(e.target.value))
+                if (orden) {
+                  setCobroTarget(orden)
+                  setCobroForm((prev) => ({ ...prev, monto: String(orden.saldo_pendiente ?? '') }))
+                }
+              }}
+              fullWidth
+            >
+              {cobroOrdenes.map((o) => (
+                <MenuItem key={o.id} value={o.id}>
+                  #{o.id} · {o.vehiculo ? `${o.vehiculo.marca} ${o.vehiculo.modelo} ${o.vehiculo.patente}` : ''} · Saldo {fmtMoney(o.saldo_pendiente)}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
             {[
               { label: 'Total', value: fmtMoney(cobroTarget?.total), color: 'text.primary' },
@@ -548,11 +614,13 @@ export default function Clientes() {
         onClose={() => setDeleteVehTarget(null)}
         onConfirm={confirmDeleteVeh}
       />
+
+      <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
     </Box>
   )
 }
 
-function ClienteRow({ cliente, onView, onEdit, onDelete }) {
+function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar }) {
   const vehiculos = cliente.vehiculos ?? []
   return (
     <TableRow hover onClick={onView} sx={{ cursor: 'pointer' }}>
@@ -618,6 +686,11 @@ function ClienteRow({ cliente, onView, onEdit, onDelete }) {
         />
       </TableCell>
       <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+        {cliente.saldo_total > 0 && (
+          <IconButton size="small" color="success" onClick={onCobrar} aria-label="Cobrar">
+            <PaymentsIcon fontSize="small" />
+          </IconButton>
+        )}
         <IconButton size="small" onClick={onView} aria-label="Ver">
           <VisibilityIcon fontSize="small" />
         </IconButton>
