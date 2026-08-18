@@ -28,7 +28,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   if (token) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/panel" replace />
   }
 
   const handleSubmit = async (event) => {
@@ -37,7 +37,7 @@ export default function Login() {
     setSubmitting(true)
     try {
       await login(email, password)
-      navigate('/', { replace: true })
+      navigate('/panel', { replace: true })
     } catch {
       setError('Credenciales inválidas. Verificá tu correo y contraseña.')
     } finally {

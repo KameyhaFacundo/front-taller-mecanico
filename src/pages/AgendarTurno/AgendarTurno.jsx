@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -18,7 +17,6 @@ import {
   Typography,
 } from '@mui/material'
 import BuildIcon from '@mui/icons-material/Build'
-import SpeedIcon from '@mui/icons-material/Speed'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import PersonIcon from '@mui/icons-material/Person'
@@ -31,6 +29,9 @@ import { useAsyncData } from '../../hooks/useAsyncData'
 import MarcaAutocomplete from '../../components/MarcaAutocomplete'
 import ModeloAutocomplete from '../../components/ModeloAutocomplete'
 import TicketDialog from '../../components/TicketDialog'
+import PublicHeader from '../../components/public/PublicHeader'
+import PublicFooter from '../../components/public/PublicFooter'
+import WhatsAppFloat from '../../components/public/WhatsAppFloat'
 import { fmtDate, fmtDateTime, fmtMoney, fmtTime, fmtWeekdayShort } from '../../utils/format'
 import { waLink, waLinkTaller, waMensajeTurno } from '../../utils/wa'
 
@@ -284,37 +285,7 @@ export default function AgendarTurno() {
 
   return (
     <Box sx={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      <Box
-        sx={{
-          width: '100%',
-          py: { xs: 2, sm: 2.5 },
-          px: { xs: 2, sm: 4 },
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <Box sx={{ width: 40, height: 40, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (t) => t.custom.brandGradient, color: '#fff' }}>
-            <SpeedIcon fontSize="small" />
-          </Box>
-          <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-              Exe-Mecanica
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
-              Gestión integral del taller
-            </Typography>
-          </Box>
-        </Stack>
-        <Button component={RouterLink} to="/login" variant="text" color="primary" size="small" sx={{ textTransform: 'none' }}>
-          Ingreso del taller
-        </Button>
-      </Box>
+      <PublicHeader />
 
       <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', p: { xs: 2, sm: 4 }, py: { xs: 3, sm: 5 } }}>
         <Box sx={{ width: '100%', maxWidth: 640 }}>
@@ -694,6 +665,9 @@ export default function AgendarTurno() {
           )}
         </Box>
       </Box>
+
+      <PublicFooter />
+      <WhatsAppFloat />
 
       <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
     </Box>

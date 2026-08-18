@@ -46,7 +46,7 @@ import { initials } from '../utils/format'
 // content gets the full width of the screen. `children` groups (Inventario)
 // open as a dropdown instead of eating more horizontal space.
 const sections = [
-  { key: 'panel', icon: SpeedIcon, label: 'Panel', path: '/', end: true },
+  { key: 'panel', icon: SpeedIcon, label: 'Panel', path: '/panel', end: true },
   {
     key: 'agenda',
     icon: CalendarMonthIcon,

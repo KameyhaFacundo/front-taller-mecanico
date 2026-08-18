@@ -15,7 +15,7 @@ export default function Forbidden() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           No tenés permisos para ver esta página. Contactá al administrador si creés que es un error.
         </Typography>
-        <Button component={Link} to="/" variant="contained">
+        <Button component={Link} to="/panel" variant="contained">
           Volver al panel
         </Button>
       </Paper>

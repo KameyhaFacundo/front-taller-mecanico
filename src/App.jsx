@@ -7,6 +7,7 @@ import Login from './pages/Login/Login'
 import Forbidden from './pages/Forbidden/Forbidden'
 
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'))
+const Landing = lazy(() => import('./pages/Landing/Landing'))
 const AgendarTurno = lazy(() => import('./pages/AgendarTurno/AgendarTurno'))
 const Users = lazy(() => import('./pages/Users/Users'))
 const Clientes = lazy(() => import('./pages/Clientes/Clientes'))
@@ -31,10 +32,11 @@ export default function App() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/agendar" element={<AgendarTurno />} />
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/panel" element={<Dashboard />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/vehiculos" element={<Vehiculos />} />
           <Route path="/turnos" element={<Turnos />} />

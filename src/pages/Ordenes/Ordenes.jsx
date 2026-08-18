@@ -59,7 +59,7 @@ import VehiculoPicker from '../../components/VehiculoPicker'
 import NuevoVehiculoDialog from '../../components/NuevoVehiculoDialog'
 import TicketDialog from '../../components/TicketDialog'
 import { ordenEstadoMeta, ordenNextEstados, pagoMetodoMeta } from '../../utils/meta'
-import { fmtMoney, fmtDateTime, fmtDateTimeShort, fmtVehiculo, parseNumero, toISODate } from '../../utils/format'
+import { fmtMoney, fmtDateTime, fmtDateTimeShort, fmtVehiculo, parseNumero, plural, toISODate } from '../../utils/format'
 import { waLink, waMensajeOrden } from '../../utils/wa'
 
 const emptyForm = { id: null, cliente_id: '', vehiculo_id: '', asignado_a: '', estado: 'pendiente', items: [] }

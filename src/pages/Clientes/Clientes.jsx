@@ -387,6 +387,7 @@ export default function Clientes() {
                   onEdit={() => openCliente(cliente, 'editar')}
                   onDelete={() => setDeleteClienteTarget(cliente)}
                   onCobrar={() => openCobroCliente(cliente)}
+                  mostrarAgendar={sinTurno}
                   onAgendar={() =>
                     navigate('/turnos', {
                       state: { nuevoTurno: { cliente_id: cliente.id, vehiculo_id: cliente.vehiculos?.[0]?.id ?? '' } },
@@ -572,19 +573,14 @@ export default function Clientes() {
   )
 }
 
-function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar }) {
+function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar, mostrarAgendar }) {
   const vehiculos = cliente.vehiculos ?? []
   return (
     <TableRow hover onClick={onView} sx={{ cursor: 'pointer' }}>
       <TableCell>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {cliente.nombre}
-          </Typography>
-          {!cliente.tiene_turno && (
-            <Chip size="small" label="Sin turno" color="warning" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
-          )}
-        </Stack>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {cliente.nombre}
+        </Typography>
       </TableCell>
       <TableCell>
         <Stack spacing={0.5}>
@@ -643,7 +639,7 @@ function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar }) 
         />
       </TableCell>
       <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-        {!cliente.tiene_turno && (
+        {mostrarAgendar && !cliente.tiene_turno && (
           <IconButton size="small" color="primary" onClick={onAgendar} aria-label="Agendar turno" title="Agendar turno" disabled={vehiculos.length === 0}>
             <CalendarMonthIcon fontSize="small" />
           </IconButton>
