@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Button, Chip, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { Box, Button, Chip, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -104,10 +104,10 @@ export default function Servicios() {
   }
 
   const columns = [
-    { header: 'Nombre', key: 'nombre' },
+    { header: 'Servicio', key: 'nombre' },
     { header: 'Duración (min)', key: 'duracion_min' },
     { header: 'Precio base', key: 'precio_base', render: (s) => (s.precio_base != null ? fmtMoney(s.precio_base) : '') },
-    { header: 'Autogestionable', key: 'autogestionable', render: (s) => (s.autogestionable ? 'Sí' : 'No') },
+    { header: 'Origen', key: 'autogestionable', render: (s) => (s.autogestionable ? 'Sí' : 'No') },
   ]
 
   return (
@@ -132,9 +132,12 @@ export default function Servicios() {
       />
 
       <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5, mb: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          {plural(servicios.total, 'servicio')}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <BuildIcon fontSize="small" color="text.secondary" />
+          <Typography variant="body2" color="text.secondary">
+            {plural(servicios.total, 'servicio')}
+          </Typography>
+        </Box>
         <SearchInput value={servicios.q} onChange={servicios.setQ} placeholder="Buscar servicio…" width={{ xs: '100%', sm: 280 }} />
       </Stack>
 
@@ -185,18 +188,22 @@ export default function Servicios() {
                   <TableCell>
                     <Chip
                       size="small"
-                      label={s.autogestionable ? 'Auto (bot)' : 'Manual'}
+                      label={s.autogestionable ? 'Autogestionable' : 'Manual'}
                       color={s.autogestionable ? 'success' : 'warning'}
                       variant={s.autogestionable ? 'filled' : 'outlined'}
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openForm(s)} aria-label="Editar">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(s)} aria-label="Eliminar">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Editar">
+                      <IconButton size="small" onClick={() => openForm(s)} aria-label="Editar">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Eliminar">
+                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(s)} aria-label="Eliminar">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -245,7 +252,7 @@ export default function Servicios() {
               />
               <TextField select label="Origen" name="autogestionable" value={form.autogestionable ? 'true' : 'false'} onChange={(event) => setForm((prev) => ({ ...prev, autogestionable: event.target.value === 'true' }))}>
                 <MenuItem value="false">Manual (lo agenda el taller)</MenuItem>
-                <MenuItem value="true">Auto (autogestionable por el bot)</MenuItem>
+                <MenuItem value="true">Autogestionable (lo agenda el cliente)</MenuItem>
               </TextField>
             </Stack>
           </Box>

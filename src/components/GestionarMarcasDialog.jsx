@@ -6,12 +6,15 @@ import { createMarca, deleteMarca, listMarcas } from '../services/clientesApi'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useNotify } from '../context/useNotify'
 import AppDialog from './AppDialog'
+import ConfirmDialog from './ConfirmDialog'
 
 export default function GestionarMarcasDialog({ open, onClose, onChanged }) {
   const notify = useNotify()
   const marcas = useAsyncData(listMarcas)
   const [nombre, setNombre] = useState('')
   const [busy, setBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const handleAdd = async (event) => {
     event.preventDefault()
@@ -31,14 +34,19 @@ export default function GestionarMarcasDialog({ open, onClose, onChanged }) {
     }
   }
 
-  const handleDelete = async (marca) => {
+  const handleDelete = async () => {
+    setDeleteBusy(true)
     try {
-      await deleteMarca(marca.id)
+      await deleteMarca(deleteTarget.id)
       notify.success('Marca eliminada.')
+      setDeleteTarget(null)
       marcas.refresh()
       onChanged()
     } catch (err) {
       notify.error(err.response?.data?.message || 'No se pudo eliminar la marca.')
+      setDeleteTarget(null)
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -69,12 +77,20 @@ export default function GestionarMarcasDialog({ open, onClose, onChanged }) {
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
               {m.nombre}
             </Typography>
-            <IconButton size="small" color="error" onClick={() => handleDelete(m)} aria-label={`Eliminar ${m.nombre}`}>
+            <IconButton size="small" color="error" onClick={() => setDeleteTarget(m)} aria-label={`Eliminar ${m.nombre}`}>
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Stack>
         ))}
       </Stack>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Eliminar marca"
+        message={`¿Eliminar la marca "${deleteTarget?.nombre}"?`}
+        busy={deleteBusy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+      />
     </AppDialog>
   )
 }

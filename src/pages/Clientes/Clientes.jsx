@@ -1,14 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { alpha } from '@mui/material/styles'
 import {
   Box,
   Button,
   Chip,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  MenuItem,
   Paper,
   Skeleton,
   Stack,
@@ -19,6 +16,8 @@ import {
   TableHead,
   TableRow,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
@@ -33,6 +32,7 @@ import GroupIcon from '@mui/icons-material/Group'
 import PersonIcon from '@mui/icons-material/Person'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import PaymentsIcon from '@mui/icons-material/Payments'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import { createCliente, deleteCliente, getCliente, importClientes, listClientes, updateCliente, updateVehiculo, agregarVehiculoCliente, quitarVehiculoCliente } from '../../services/clientesApi'
 import { createPago } from '../../services/cajaApi'
 import { usePaginatedData } from '../../hooks/usePaginatedData'
@@ -48,8 +48,10 @@ import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import VehiculoFormFields from '../../components/VehiculoFormFields'
 import TicketDialog from '../../components/TicketDialog'
+import RowActionsMenu from '../../components/RowActionsMenu'
+import CobroDialog from '../../components/CobroDialog'
 import { waLink } from '../../utils/wa'
-import { plural, fmtMoney, fmtDate, fmtDateTime, parseNumero } from '../../utils/format'
+import { plural, fmtMoney, fmtDate, parseNumero } from '../../utils/format'
 import { ordenEstadoMeta, pagoMetodoMeta } from '../../utils/meta'
 
 const emptyCliente = { id: null, nombre: '', telefonos: [''], emails: [] }
@@ -57,8 +59,11 @@ const emptyVehiculo = { id: null, marca: '', modelo: '', anio: '', patente: '', 
 
 export default function Clientes() {
   const notify = useNotify()
-  // Modal único con dos modos: 'ver' (detalle, solo lectura) y 'editar'
-  // (formulario). Mismo modal, funcionalidad distinta.
+  const location = useLocation()
+  const navigate = useNavigate()
+  // Filtro "Sin turno": clientes sin un turno activo (por asignar o
+  // confirmado). Puede prenderlo él mismo o llegar desde el Panel.
+  const [sinTurno, setSinTurno] = useState(() => Boolean(location.state?.sinTurno))
   const [clienteModal, setClienteModal] = useState(null)
   const [clienteForm, setClienteForm] = useState(emptyCliente)
   const [deleteClienteTarget, setDeleteClienteTarget] = useState(null)
@@ -74,8 +79,14 @@ export default function Clientes() {
   const [cobrando, setCobrando] = useState(false)
   const [ticket, setTicket] = useState(null)
 
-  const clientes = usePaginatedData(listClientes, { errorMessage: 'No se pudieron cargar los clientes.' })
+  const clientes = usePaginatedData(listClientes, { errorMessage: 'No se pudieron cargar los clientes.', extraParams: sinTurno ? { sin_turno: 1 } : {} })
   const filtered = clientes.rows
+
+  // Limpia el estado de navegación: el filtro ya quedó seteado al montar.
+  useEffect(() => {
+    if (location.state?.sinTurno) navigate(location.pathname, { replace: true, state: {} })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Recarga el listado y, si el modal está mostrando a este cliente, lo
   // refresca con los datos nuevos (si no, queda con la foto vieja).
@@ -298,7 +309,7 @@ export default function Clientes() {
   }
 
   const columns = [
-    { header: 'Nombre', key: 'nombre' },
+    { header: 'Cliente', key: 'nombre' },
     { header: 'Teléfonos', key: 'telefonos', render: (c) => (c.telefonos ?? []).map((t) => t.telefono).join('; ') },
     { header: 'Emails', key: 'emails', render: (c) => (c.emails ?? []).map((e) => e.email).join('; ') },
     { header: 'Vehículos', key: 'vehiculos', render: (c) => (c.vehiculos ?? []).map((v) => `${v.marca} ${v.modelo} (${v.patente})`).join(', ') },
@@ -330,10 +341,16 @@ export default function Clientes() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <GroupIcon fontSize="small" color="text.secondary" />
           <Typography variant="body2" color="text.secondary">
-            {plural(clientes.total, 'cliente')}
+            {plural(clientes.total, sinTurno ? 'cliente sin turno' : 'cliente')}
           </Typography>
         </Box>
-        <SearchInput value={clientes.q} onChange={clientes.setQ} placeholder="Buscar por nombre, teléfono o patente…" width={{ xs: '100%', sm: 300 }} />
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
+          <ToggleButtonGroup size="small" exclusive value={sinTurno ? 'sin_turno' : 'todos'} onChange={(_, v) => v && setSinTurno(v === 'sin_turno')} sx={{ alignSelf: { xs: 'flex-start', sm: 'auto' } }}>
+            <ToggleButton value="todos">Todos</ToggleButton>
+            <ToggleButton value="sin_turno">Sin turno</ToggleButton>
+          </ToggleButtonGroup>
+          <SearchInput value={clientes.q} onChange={clientes.setQ} placeholder="Buscar por nombre, teléfono o patente…" width={{ xs: '100%', sm: 300 }} />
+        </Stack>
       </Stack>
 
       {clientes.loading ? (
@@ -341,10 +358,10 @@ export default function Clientes() {
       ) : filtered.length === 0 ? (
         <Paper variant="outlined">
           <EmptyState
-            icon={GroupIcon}
-            title={clientes.q ? 'Sin resultados' : 'No hay clientes'}
-            description={clientes.q ? 'Probá con otro término de búsqueda.' : 'Cargá tu primer cliente para empezar a gestionar.'}
-            actionLabel={!clientes.q ? 'Nuevo cliente' : undefined}
+            icon={sinTurno ? CalendarMonthIcon : GroupIcon}
+            title={clientes.q ? 'Sin resultados' : sinTurno ? 'No hay clientes sin turno' : 'No hay clientes'}
+            description={clientes.q ? 'Probá con otro término de búsqueda.' : sinTurno ? 'Todos tus clientes ya tienen un turno asignado o pendiente.' : 'Cargá tu primer cliente para empezar a gestionar.'}
+            actionLabel={!clientes.q && !sinTurno ? 'Nuevo cliente' : undefined}
             onAction={() => openCliente(null, 'editar')}
           />
         </Paper>
@@ -370,6 +387,11 @@ export default function Clientes() {
                   onEdit={() => openCliente(cliente, 'editar')}
                   onDelete={() => setDeleteClienteTarget(cliente)}
                   onCobrar={() => openCobroCliente(cliente)}
+                  onAgendar={() =>
+                    navigate('/turnos', {
+                      state: { nuevoTurno: { cliente_id: cliente.id, vehiculo_id: cliente.vehiculos?.[0]?.id ?? '' } },
+                    })
+                  }
                 />
               ))}
             </TableBody>
@@ -507,95 +529,25 @@ export default function Clientes() {
         </Box>
       </AppDialog>
 
-      <AppDialog
+      <CobroDialog
         open={Boolean(cobroTarget)}
         onClose={() => { setCobroTarget(null); setCobroOrdenes([]) }}
         title={`Cobrar ${cobroClienteNombre || `orden #${cobroTarget?.id}`}`}
         subtitle={cobroOrdenes.length > 1 ? 'El cliente tiene varias deudas: elegí cuál cobrar.' : 'Registrá el pago de la orden.'}
-        icon={<ReceiptIcon />}
-        iconBg="success.main"
-        maxWidth="xs"
-        actions={
-          <>
-            <Button onClick={() => { setCobroTarget(null); setCobroOrdenes([]) }} disabled={cobrando}>Cancelar</Button>
-            <Button onClick={confirmCobro} variant="contained" color="success" disabled={cobrando}>
-              {cobrando ? 'Registrando…' : 'Registrar cobro'}
-            </Button>
-          </>
-        }
-      >
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {cobroOrdenes.length > 1 && (
-            <TextField
-              select
-              label="Orden a cobrar"
-              value={cobroTarget?.id ?? ''}
-              onChange={(e) => {
-                const orden = cobroOrdenes.find((o) => o.id === Number(e.target.value))
-                if (orden) {
-                  setCobroTarget(orden)
-                  setCobroForm((prev) => ({ ...prev, monto: String(orden.saldo_pendiente ?? '') }))
-                }
-              }}
-              fullWidth
-            >
-              {cobroOrdenes.map((o) => (
-                <MenuItem key={o.id} value={o.id}>
-                  #{o.id} · {o.vehiculo ? `${o.vehiculo.marca} ${o.vehiculo.modelo} ${o.vehiculo.patente}` : ''} · Saldo {fmtMoney(o.saldo_pendiente)}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-            {[
-              { label: 'Total', value: fmtMoney(cobroTarget?.total), color: 'text.primary' },
-              { label: 'Pagado', value: fmtMoney(cobroTarget?.total_pagado), color: 'success.main' },
-              { label: 'Saldo', value: fmtMoney(cobroTarget?.saldo_pendiente), color: 'error.main' },
-            ].map((cell) => (
-              <Box key={cell.label} sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  {cell.label}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 800, color: cell.color }}>
-                  {cell.value}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-          <TextField
-            label="Monto"
-            name="monto"
-            type="number"
-            value={cobroForm.monto}
-            onChange={(e) => setCobroForm((prev) => ({ ...prev, monto: e.target.value }))}
-            fullWidth
-            slotProps={{ htmlInput: { min: 0 } }}
-            autoFocus
-          />
-          <TextField select label="Método" name="metodo" value={cobroForm.metodo} onChange={(e) => setCobroForm((prev) => ({ ...prev, metodo: e.target.value }))} fullWidth>
-            {Object.entries(pagoMetodoMeta).map(([metodo, meta]) => (
-              <MenuItem key={metodo} value={metodo}>
-                {meta.label}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField label="Referencia (opcional)" name="referencia" value={cobroForm.referencia} onChange={(e) => setCobroForm((prev) => ({ ...prev, referencia: e.target.value }))} fullWidth />
-          {(cobroTarget?.pagos?.length ?? 0) > 0 && (
-            <Box>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                Pagos previos
-              </Typography>
-              <List dense disablePadding>
-                {(cobroTarget?.pagos ?? []).map((pago) => (
-                  <ListItem key={pago.id} disableGutters>
-                    <ListItemText primary={`${pagoMetodoMeta[pago.metodo]?.label ?? pago.metodo} — ${fmtMoney(pago.monto)}`} secondary={pago.referencia || fmtDateTime(pago.fecha)} />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-        </Stack>
-      </AppDialog>
+        orden={cobroTarget}
+        ordenes={cobroOrdenes}
+        ordenesOnChange={(id) => {
+          const orden = cobroOrdenes.find((o) => o.id === id)
+          if (orden) {
+            setCobroTarget(orden)
+            setCobroForm((prev) => ({ ...prev, monto: String(orden.saldo_pendiente ?? '') }))
+          }
+        }}
+        form={cobroForm}
+        setForm={setCobroForm}
+        saving={cobrando}
+        onConfirm={confirmCobro}
+      />
 
       <ConfirmDialog
         open={Boolean(deleteClienteTarget)}
@@ -620,14 +572,19 @@ export default function Clientes() {
   )
 }
 
-function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar }) {
+function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar }) {
   const vehiculos = cliente.vehiculos ?? []
   return (
     <TableRow hover onClick={onView} sx={{ cursor: 'pointer' }}>
       <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {cliente.nombre}
-        </Typography>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {cliente.nombre}
+          </Typography>
+          {!cliente.tiene_turno && (
+            <Chip size="small" label="Sin turno" color="warning" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
+          )}
+        </Stack>
       </TableCell>
       <TableCell>
         <Stack spacing={0.5}>
@@ -686,20 +643,24 @@ function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar }) {
         />
       </TableCell>
       <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+        {!cliente.tiene_turno && (
+          <IconButton size="small" color="primary" onClick={onAgendar} aria-label="Agendar turno" title="Agendar turno" disabled={vehiculos.length === 0}>
+            <CalendarMonthIcon fontSize="small" />
+          </IconButton>
+        )}
         {cliente.saldo_total > 0 && (
           <IconButton size="small" color="success" onClick={onCobrar} aria-label="Cobrar">
             <PaymentsIcon fontSize="small" />
           </IconButton>
         )}
-        <IconButton size="small" onClick={onView} aria-label="Ver">
-          <VisibilityIcon fontSize="small" />
-        </IconButton>
-        <IconButton size="small" onClick={onEdit} aria-label="Editar">
-          <EditIcon fontSize="small" />
-        </IconButton>
-        <IconButton size="small" color="error" onClick={onDelete} aria-label="Eliminar">
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+        <RowActionsMenu
+          items={[
+            { label: 'Ver', icon: <VisibilityIcon fontSize="small" />, onClick: onView },
+            { label: 'Editar', icon: <EditIcon fontSize="small" />, onClick: onEdit },
+            { divider: true },
+            { label: 'Eliminar', icon: <DeleteIcon fontSize="small" />, onClick: onDelete, color: 'error' },
+          ]}
+        />
       </TableCell>
     </TableRow>
   )
@@ -709,6 +670,7 @@ function DetailCliente({ cliente, loading, onEdit, onDelete, onAddVeh, onEditVeh
   const vehiculos = cliente.vehiculos ?? []
   const deuda = Number(cliente.saldo_total ?? 0)
   const ordenesTotales = vehiculos.reduce((acc, v) => acc + (v.ordenesTrabajo?.length ?? 0), 0)
+  const waUrl = waLink(cliente.telefonos?.[0]?.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Exe-Mecanica.`)
   return (
     <>
       <Box
@@ -800,7 +762,8 @@ function DetailCliente({ cliente, loading, onEdit, onDelete, onAddVeh, onEditVeh
           color="success"
           startIcon={<WhatsAppIcon />}
           component="a"
-          href={waLink(cliente.telefonos?.[0]?.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Exe-Mecanica.`)}
+          href={waUrl ?? undefined}
+          disabled={!waUrl}
           target="_blank"
           rel="noopener noreferrer"
         >

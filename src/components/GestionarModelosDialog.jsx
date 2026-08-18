@@ -6,6 +6,7 @@ import { createModelo, deleteModelo, listMarcas, listModelos } from '../services
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useNotify } from '../context/useNotify'
 import AppDialog from './AppDialog'
+import ConfirmDialog from './ConfirmDialog'
 
 export default function GestionarModelosDialog({ open, onClose, onChanged }) {
   const notify = useNotify()
@@ -14,6 +15,8 @@ export default function GestionarModelosDialog({ open, onClose, onChanged }) {
   const [nombre, setNombre] = useState('')
   const [marcaId, setMarcaId] = useState('')
   const [busy, setBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const handleAdd = async (event) => {
     event.preventDefault()
@@ -34,14 +37,19 @@ export default function GestionarModelosDialog({ open, onClose, onChanged }) {
     }
   }
 
-  const handleDelete = async (modelo) => {
+  const handleDelete = async () => {
+    setDeleteBusy(true)
     try {
-      await deleteModelo(modelo.id)
+      await deleteModelo(deleteTarget.id)
       notify.success('Modelo eliminado.')
+      setDeleteTarget(null)
       modelos.refresh()
       onChanged()
     } catch (err) {
       notify.error(err.response?.data?.message || 'No se pudo eliminar el modelo.')
+      setDeleteTarget(null)
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -93,12 +101,20 @@ export default function GestionarModelosDialog({ open, onClose, onChanged }) {
                 {m.marca?.nombre ?? 'Sin marca'}
               </Typography>
             </Box>
-            <IconButton size="small" color="error" onClick={() => handleDelete(m)} aria-label={`Eliminar ${m.nombre}`}>
+            <IconButton size="small" color="error" onClick={() => setDeleteTarget(m)} aria-label={`Eliminar ${m.nombre}`}>
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Stack>
         ))}
       </Stack>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Eliminar modelo"
+        message={`¿Eliminar el modelo "${deleteTarget?.nombre}"?`}
+        busy={deleteBusy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+      />
     </AppDialog>
   )
 }

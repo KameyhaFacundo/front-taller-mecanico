@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -39,11 +39,14 @@ import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
 import TicketDialog from '../../components/TicketDialog'
+import SearchInput from '../../components/SearchInput'
+import ExportExcelButton from '../../components/ExportExcelButton'
 import { pagoMetodoMeta } from '../../utils/meta'
-import { fmtMoney, fmtDate, fmtDateTime } from '../../utils/format'
+import { fmtMoney, fmtDate, fmtDateTime, plural } from '../../utils/format'
 
 export default function Caja() {
   const notify = useNotify()
+  const navigate = useNavigate()
   const [tab, setTab] = useState('cobros')
   const [rango, setRango] = useState('mes')
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -123,6 +126,27 @@ export default function Caja() {
 
   const r = resumen.data
 
+  const exportColumns = useMemo(
+    () =>
+      tab === 'cobros'
+        ? [
+            { header: 'Fecha', key: 'fecha', render: (m) => fmtDate(m.fecha) },
+            { header: 'Orden', key: 'orden', render: (m) => m.orden_trabajo?.id ?? '' },
+            { header: 'Cliente', key: 'cliente', render: (m) => m.orden_trabajo?.cliente?.nombre ?? m.orden_trabajo?.vehiculo?.cliente?.nombre ?? '' },
+            { header: 'Método', key: 'metodo', render: (m) => pagoMetodoMeta[m.metodo]?.label ?? m.metodo },
+            { header: 'Monto', key: 'monto', render: (m) => m.monto },
+          ]
+        : [
+            { header: 'Fecha', key: 'fecha', render: (m) => fmtDate(m.fecha) },
+            { header: 'Tipo', key: 'tipo', render: (m) => (m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso') },
+            { header: 'Detalle', key: 'detalle', render: (m) => (m.tipo === 'ingreso' ? (m.orden_trabajo?.cliente?.nombre ?? `Orden #${m.orden_trabajo?.id ?? ''}`) : (m.proveedor?.nombre ?? m.descripcion ?? 'Egreso')) },
+            { header: 'Monto', key: 'monto', render: (m) => m.monto },
+          ],
+    [tab]
+  )
+
+  const activo = tab === 'cobros' ? cobros : movimientos
+
   return (
     <Box>
       <PageHeader
@@ -142,7 +166,13 @@ export default function Caja() {
       />
 
       {resumen.loading ? (
-        <SkeletonTable columns={4} />
+        <Grid container spacing={2.5} sx={{ mb: 3 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Grid key={i} size={{ xs: 12, sm: 6, lg: 3 }}>
+              <Skeleton variant="rounded" height={112} />
+            </Grid>
+          ))}
+        </Grid>
       ) : (
         <GridCards resumen={r} />
       )}
@@ -183,6 +213,32 @@ export default function Caja() {
         <ToggleButton value="cobros">Cobros</ToggleButton>
         <ToggleButton value="movimientos">Todos los movimientos</ToggleButton>
       </ToggleButtonGroup>
+
+      <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <PaymentsIcon fontSize="small" color="text.secondary" />
+          <Typography variant="body2" color="text.secondary">
+            {plural(activo.total, tab === 'cobros' ? 'cobro' : 'movimiento')}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <SearchInput
+            value={activo.q}
+            onChange={activo.setQ}
+            placeholder={tab === 'cobros' ? 'Buscar por cliente o referencia…' : 'Buscar por detalle…'}
+            width={{ xs: '100%', sm: 300 }}
+          />
+          <ExportExcelButton
+            filename={tab === 'cobros' ? 'cobros' : 'movimientos-caja'}
+            sheetName={tab === 'cobros' ? 'Cobros' : 'Movimientos'}
+            columns={exportColumns}
+            rowsFetcher={async () => {
+              const extra = tab === 'cobros' ? { tipo: 'ingreso' } : {}
+              return (await listMovimientos({ q: activo.q || undefined, ...params, ...extra, per_page: 5000 })).data
+            }}
+          />
+        </Stack>
+      </Stack>
 
       {tab === 'cobros' ? (
         cobros.loading ? (
@@ -312,11 +368,15 @@ export default function Caja() {
                             <PrintIcon fontSize="small" />
                           </IconButton>
                           <Typography
-                            component={RouterLink}
-                            to="/compras"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => navigate('/compras', { state: { verCompra: m.compra_id } })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') navigate('/compras', { state: { verCompra: m.compra_id } })
+                            }}
                             variant="caption"
-                            color="text.secondary"
-                            sx={{ fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                            color="primary"
+                            sx={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                           >
                             Ver compra #{m.compra_id}
                           </Typography>

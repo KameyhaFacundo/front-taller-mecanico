@@ -116,7 +116,7 @@ export default function HelpDialog() {
 
           <Seccion icon={<AssignmentIcon sx={{ fontSize: 18 }} />} titulo="2 · Órdenes de trabajo">
             <Flujo pasos={['pendiente', 'en_ejecucion', 'terminado', 'entregado']} meta={ordenEstadoMeta} />
-            <Linea>La orden es el trabajo real del auto adentro del taller: se le cargan repuestos y mano de obra.</Linea>
+            <Linea>La orden es el trabajo real del auto adentro del taller: se le cargan productos y mano de obra.</Linea>
             <Linea>Cada ítem se puede marcar como hecho; el estado avanza de a un paso hasta <strong>Entregado</strong>.</Linea>
             <Linea>Al entregar se cobra desde la orden (efectivo, transferencia, tarjeta, etc.) y el cobro queda registrado en Caja.</Linea>
           </Seccion>
@@ -128,7 +128,7 @@ export default function HelpDialog() {
 
           <Seccion icon={<Inventory2Icon sx={{ fontSize: 18 }} />} titulo="4 · Inventario">
             <Linea>
-              <strong>Productos</strong>: los repuestos/insumos que se venden o se usan en las órdenes.
+              <strong>Productos</strong>: los productos/insumos que se venden o se usan en las órdenes.
             </Linea>
             <Linea>
               <strong>Compras</strong>: cuando se repone stock a un proveedor; el stock se actualiza y el gasto va a Caja.
@@ -150,7 +150,8 @@ export default function HelpDialog() {
           </Seccion>
 
           <Seccion icon={<AssessmentIcon sx={{ fontSize: 18 }} />} titulo="7 · Panel (inicio)">
-            <Linea>Financiero del mes, servicios más pedidos, stock bajo, agenda de hoy y tendencia de facturación, con acceso directo a cada sección.</Linea>
+            <Linea>Financiero del mes, saldo por cobrar, servicios más pedidos, stock bajo y agenda de hoy, con tendencia de facturación.</Linea>
+            <Linea>Las <strong>tarjetas y alertas son clickeables</strong>: llevan directo a la sección correspondiente (p.ej. el saldo por cobrar abre la orden lista para cobrar).</Linea>
           </Seccion>
 
           <Seccion icon={<FileDownloadIcon sx={{ fontSize: 18 }} />} titulo="8 · Importar / Exportar">

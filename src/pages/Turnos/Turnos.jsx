@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -134,6 +134,7 @@ const diaInicial = () => {
 export default function Turnos() {
   const notify = useNotify()
   const navigate = useNavigate()
+  const location = useLocation()
   const [dia, setDia] = useState(diaInicial)
   const [form, setForm] = useState(emptyForm)
   const [open, setOpen] = useState(false)
@@ -238,6 +239,24 @@ export default function Turnos() {
     } finally {
       if (seq === huecosSeqRef.current) setDispLoading(false)
     }
+  }, [])
+
+  // "nuevoTurno" llega desde Clientes (clientes sin turno): abre el formulario
+  // de nuevo turno con ese cliente y vehículo ya elegidos.
+  useEffect(() => {
+    if (location.state?.nuevoTurno) {
+      const { cliente_id, vehiculo_id } = location.state.nuevoTurno
+      navigate(location.pathname, { replace: true, state: {} })
+      setOverlapError('')
+      setVehNuevoEnTurno(false)
+      setForm((prev) => ({ ...prev, cliente_id: cliente_id ?? '', vehiculo_id: vehiculo_id ?? '' }))
+      setModoCliente('existente')
+      setClienteNuevo({ nombre: '', telefono: '' })
+      setVehiculoNuevo(emptyVehiculoNuevo)
+      setConVehiculo(true)
+      setOpen(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -591,7 +610,7 @@ export default function Turnos() {
   const columns = [
     { header: 'Patente', key: 'vehiculo_id', render: (t) => vehById[t.vehiculo_id]?.patente ?? '—' },
     { header: 'Servicio', key: 'servicio_id', render: (t) => (t.servicios?.length ? t.servicios.map((s) => s.nombre).join(' + ') : servById[t.servicio_id]?.nombre ?? `#${t.servicio_id}`) },
-    { header: 'Fecha', key: 'fecha_hora', render: (t) => t.fecha_hora ?? '' },
+    { header: 'Fecha', key: 'fecha_hora', render: (t) => fmtDateTime(t.fecha_hora) },
     { header: 'Cliente', key: 'vehiculo_id', render: (t) => vehById[t.vehiculo_id]?.cliente?.nombre ?? '—' },
     { header: 'Estado', key: 'estado', render: (t) => turnoEstadoMeta[t.estado]?.label ?? t.estado },
   ]
@@ -907,6 +926,21 @@ export default function Turnos() {
         actionsSx={{ flexDirection: 'column', alignItems: 'stretch' }}
         actions={
           <>
+            {accionesTurno && !accionesTurno.orden_trabajo && ['pendiente_asignar', 'confirmado'].includes(accionesTurno.estado) && (
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                startIcon={<AssignmentIcon />}
+                onClick={() => {
+                  setOrdenTarget(accionesTarget)
+                  setAsignadoOrden('')
+                  setAccionesTarget(null)
+                }}
+              >
+                Crear orden de trabajo
+              </Button>
+            )}
             {nextEstados.map((estado) => (
               <Button
                 key={estado}
@@ -920,20 +954,6 @@ export default function Turnos() {
                 Marcar {turnoEstadoMeta[estado].label}
               </Button>
             ))}
-            {accionesTurno?.estado === 'confirmado' && !accionesTurno.orden_trabajo && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AssignmentIcon />}
-                onClick={() => {
-                  setOrdenTarget(accionesTarget)
-                  setAsignadoOrden('')
-                  setAccionesTarget(null)
-                }}
-              >
-                Crear orden de trabajo
-              </Button>
-            )}
             <Stack direction="row" spacing={1}>
               <Button
                 variant="contained"
@@ -1015,9 +1035,9 @@ export default function Turnos() {
                 </Button>
               </Box>
             )}
-            {accionesTurno?.estado === 'confirmado' && !accionesTurno.orden_trabajo && (
+            {accionesTurno && !accionesTurno.orden_trabajo && ['pendiente_asignar', 'confirmado'].includes(accionesTurno.estado) && (
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Cuando el vehículo entró al taller, generá la orden de trabajo para cargarle repuestos y mano de obra. El turno queda marcado como completado automáticamente.
+                Cuando el vehículo entró al taller, generá la orden de trabajo para cargarle productos y mano de obra. El turno queda marcado como completado automáticamente.
               </Typography>
             )}
           </Stack>
@@ -1052,12 +1072,12 @@ export default function Turnos() {
         {ordenCreada ? (
           <Typography variant="body2" color="text.secondary">
             El turno pasó a <strong>Completado</strong>. La orden #<strong>{ordenCreada.id}</strong> quedó cargada en{' '}
-            <strong>Órdenes</strong> como <strong>Pendiente</strong>: desde ahí vas a poder cargarle repuestos y mano de obra.
+            <strong>Órdenes</strong> como <strong>Pendiente</strong>: desde ahí vas a poder cargarle productos y mano de obra.
           </Typography>
         ) : (
           <>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Se convertirá el turno del {fmtDateTime(ordenTarget?.fecha_hora)} en una orden de trabajo Pendiente. Después vas a poder cargarle repuestos y mano de obra desde el menú Órdenes.
+              Se convertirá el turno del {fmtDateTime(ordenTarget?.fecha_hora)} en una orden de trabajo Pendiente. Después vas a poder cargarle productos y mano de obra desde el menú Órdenes.
             </Typography>
             <TextField select label="Responsable (opcional)" value={asignadoOrden} onChange={(e) => setAsignadoOrden(e.target.value)} fullWidth>
               <MenuItem value="">

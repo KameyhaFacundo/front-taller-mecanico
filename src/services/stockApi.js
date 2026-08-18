@@ -82,6 +82,11 @@ export async function createCompra(payload) {
   return response.data
 }
 
+export async function getCompra(id) {
+  const response = await axiosClient.get(`/compras/${id}`)
+  return response.data
+}
+
 export async function updateCompra(id, payload) {
   const response = await axiosClient.put(`/compras/${id}`, payload)
   return response.data

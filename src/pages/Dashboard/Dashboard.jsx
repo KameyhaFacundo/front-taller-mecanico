@@ -28,7 +28,7 @@ import { useAuth } from '../../hooks/useAuth'
 import StatCard from '../../components/StatCard'
 import EmptyState from '../../components/EmptyState'
 import ExportExcelButton from '../../components/ExportExcelButton'
-import { fmtMoney, fmtMoneyShort, fmtDayName, initials } from '../../utils/format'
+import { fmtMoney, fmtDayName, initials } from '../../utils/format'
 import { turnoOrigenMeta } from '../../utils/meta'
 
 function saludo() {
@@ -87,6 +87,7 @@ export default function Dashboard() {
   const alertas = data.alertas ?? {}
   const cobrosPendientes = alertas.cobros_pendientes ?? []
   const stockBajo = alertas.stock_bajo ?? []
+  const clientesSinTurno = alertas.clientes_sin_turno ?? 0
 
   const totalPendiente = cobrosPendientes.reduce((acc, cobro) => acc + Number(cobro.saldo || 0), 0)
 
@@ -165,16 +166,16 @@ export default function Dashboard() {
 
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard label="Turnos hoy" value={stats.turnos_hoy ?? 0} icon={CalendarMonthIcon} color="primary" />
+          <StatCard label="Turnos hoy" value={stats.turnos_hoy ?? 0} icon={CalendarMonthIcon} color="primary" onClick={() => navigate('/turnos')} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard label="Órdenes en ejecución" value={stats.en_ejecucion ?? 0} icon={ConstructionIcon} color="warning" />
+          <StatCard label="Órdenes en ejecución" value={stats.en_ejecucion ?? 0} icon={ConstructionIcon} color="warning" onClick={() => navigate('/ordenes')} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard label="Por asignar" value={stats.sin_asignar ?? 0} icon={HourglassEmptyIcon} color="error" />
+          <StatCard label="Por asignar" value={stats.sin_asignar ?? 0} icon={HourglassEmptyIcon} color="warning" onClick={() => navigate('/turnos')} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard label="Cobros pendientes" value={fmtMoneyShort(totalPendiente)} icon={PaymentsIcon} color="success" />
+          <StatCard label="Saldo por cobrar" value={fmtMoney(totalPendiente)} icon={PaymentsIcon} color="success" onClick={() => navigate('/ordenes')} />
         </Grid>
       </Grid>
 
@@ -284,6 +285,43 @@ export default function Dashboard() {
               </Stack>
 
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+                <CalendarMonthIcon fontSize="small" color="text.secondary" />
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  Clientes sin turno
+                </Typography>
+                {clientesSinTurno > 0 && (
+                  <Chip size="small" label={clientesSinTurno} color="warning" sx={{ ml: 'auto' }} />
+                )}
+              </Stack>
+              <Stack sx={{ mb: 3 }} spacing={0.5}>
+                <Box
+                  onClick={() => navigate('/clientes', { state: { sinTurno: true } })}
+                  sx={{
+                    py: 0.75,
+                    px: 1,
+                    borderRadius: 1.5,
+                    cursor: 'pointer',
+                    bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'background.default'),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1.5,
+                    transition: 'background-color 0.15s ease',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                    {clientesSinTurno > 0 ? (clientesSinTurno === 1 ? 'Un cliente' : `${clientesSinTurno} clientes`) + ' con autos aún sin turno' : 'Todos los clientes tienen turno'}
+                  </Typography>
+                  {clientesSinTurno > 0 && (
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap' }}>
+                      Agendar
+                    </Typography>
+                  )}
+                </Box>
+              </Stack>
+
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
                 <PaymentsIcon fontSize="small" color="text.secondary" />
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>
                   Cobros pendientes
@@ -301,7 +339,7 @@ export default function Dashboard() {
                   cobrosPendientes.map((cobro) => (
                     <Box
                       key={cobro.id}
-                      onClick={() => navigate('/ordenes')}
+                      onClick={() => navigate('/ordenes', { state: { cobrar: cobro.id } })}
                       sx={{
                         py: 0.75,
                         px: 1,

@@ -30,7 +30,7 @@ export const turnoOrigenMeta = {
   web: { label: 'Web (autoagendado)', color: 'info' },
   whatsapp: { label: 'WhatsApp', color: 'success' },
   manual: { label: 'Taller', color: 'default' },
-  auto: { label: 'Taller', color: 'default' },
+  auto: { label: 'Autogestionado', color: 'secondary' },
 }
 
 export const pagoMetodoMeta = {

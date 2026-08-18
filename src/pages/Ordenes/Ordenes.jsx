@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { alpha } from '@mui/material/styles'
 import {
   Box,
@@ -8,11 +9,7 @@ import {
   Chip,
   IconButton,
   LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
   MenuItem,
-  Modal,
   Paper,
   Skeleton,
   Stack,
@@ -37,13 +34,12 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import EventIcon from '@mui/icons-material/Event'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
-import CloseIcon from '@mui/icons-material/Close'
 import PrintIcon from '@mui/icons-material/Print'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import PersonIcon from '@mui/icons-material/Person'
 import EngineeringIcon from '@mui/icons-material/Engineering'
 import HandymanIcon from '@mui/icons-material/Handyman'
-import { cambiarEstadoOrden, createOrden, deleteOrden, getOrden, listOrdenes, updateOrden } from '../../services/ordenesApi'
+import { cambiarEstadoOrden, createOrden, deleteOrden, getOrden, listOrdenes, marcarItemOrden, updateOrden } from '../../services/ordenesApi'
 import { listClientesOptions, listVehiculosOptions } from '../../services/clientesApi'
 import { listRepuestosOptions } from '../../services/stockApi'
 import { listUsuariosOpciones } from '../../services/usersApi'
@@ -56,6 +52,7 @@ import SearchInput from '../../components/SearchInput'
 import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import RowActionsMenu from '../../components/RowActionsMenu'
+import CobroDialog from '../../components/CobroDialog'
 import AppDialog from '../../components/AppDialog'
 import ExportExcelButton from '../../components/ExportExcelButton'
 import VehiculoPicker from '../../components/VehiculoPicker'
@@ -80,6 +77,8 @@ const boardColumns = [
 
 export default function Ordenes() {
   const notify = useNotify()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [form, setForm] = useState(emptyForm)
   const [open, setOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -93,6 +92,28 @@ export default function Ordenes() {
   const [formLoading, setFormLoading] = useState(false)
   const [vehNuevoOpen, setVehNuevoOpen] = useState(false)
   const [rango, setRango] = useState('todo')
+  const [reabrirTarget, setReabrirTarget] = useState(null)
+  const [reabrirBusy, setReabrirBusy] = useState(false)
+  const [marcarTodosBusy, setMarcarTodosBusy] = useState(false)
+
+  // "cobrar" llega desde el Dashboard (estado de navegación): abre el cobro
+  // de esa orden directamente sin buscarla en el tablero.
+  useEffect(() => {
+    if (location.state?.cobrar) {
+      const id = Number(location.state.cobrar)
+      navigate(location.pathname, { replace: true, state: {} })
+      ;(async () => {
+        try {
+          const orden = await getOrden(id)
+          setCobroTarget(orden)
+          setPagoForm({ monto: String(orden.saldo_pendiente ?? ''), metodo: 'efectivo', referencia: '' })
+        } catch {
+          notify.error('No se pudo cargar la orden a cobrar.')
+        }
+      })()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Full unwrapped lists — used as lookup/dropdown sources, not their own
   // paginated tables (Vehiculos/Repuestos already have those elsewhere).
@@ -159,8 +180,8 @@ export default function Ordenes() {
         { label: 'Estado', value: ordenEstadoMeta[orden.estado]?.label ?? orden.estado },
       ],
       items: (orden.items ?? []).map((item) => ({
-        descripcion: item.tipo === 'repuesto' ? (repById[item.repuesto_id]?.nombre ?? item.descripcion ?? 'Repuesto') : item.descripcion || 'Mano de obra',
-        detalle: `${item.tipo === 'repuesto' ? 'Repuesto' : 'Mano de obra'} · ${item.cantidad} × ${fmtMoney(item.precio)}`,
+        descripcion: item.tipo === 'repuesto' ? (repById[item.repuesto_id]?.nombre ?? item.descripcion ?? 'Producto') : item.descripcion || 'Mano de obra',
+        detalle: `${item.tipo === 'repuesto' ? 'Producto' : 'Mano de obra'} · ${item.cantidad} × ${fmtMoney(item.precio)}`,
         subtotal: fmtMoney(Number(item.cantidad) * Number(item.precio)),
       })),
       totales: [
@@ -234,7 +255,7 @@ export default function Ordenes() {
         return
       }
       if (item.tipo === 'repuesto' && !item.repuesto_id) {
-        notify.error('Elegí el repuesto de cada item de tipo repuesto.')
+        notify.error('Elegí el producto de cada item de tipo producto.')
         return
       }
       if (item.tipo === 'mano_obra' && !String(item.descripcion ?? '').trim()) {
@@ -286,16 +307,62 @@ export default function Ordenes() {
     }
   }
 
+  const prevEstadoMap = { entregado: 'terminado', terminado: 'en_ejecucion', en_ejecucion: 'pendiente' }
+
   const handleEstado = async (orden, estado) => {
     try {
       await cambiarEstadoOrden(orden.id, estado)
-      notify.success(`Orden marcada como "${ordenEstadoMeta[estado].label}".`)
+      const sinCompletar = (orden.items ?? []).filter((i) => !i.completado).length
+      if (estado === 'entregado' && orden.saldo_pendiente > 0) {
+        notify.warning(`Falta cobrar ${fmtMoney(orden.saldo_pendiente)} — se abrió el cobro.`)
+      } else if (estado === 'terminado' && sinCompletar > 0) {
+        notify.warning(`Quedan ${sinCompletar} item(s) sin marcar como completados.`)
+      } else {
+        notify.success(`Orden marcada como "${ordenEstadoMeta[estado].label}".`)
+      }
       // Si la orden está abierta en el detalle, actualizarla al toque para que
       // el header de progreso no quede desactualizado (reload() refresca la lista).
       if (detail?.id === orden.id) setDetail((prev) => (prev ? { ...prev, estado } : prev))
       reload()
+      if (estado === 'entregado' && orden.saldo_pendiente > 0) {
+        openCobro(orden)
+      }
     } catch (err) {
       notify.error(err.response?.data?.message || 'No se pudo actualizar la orden.')
+    }
+  }
+
+  const confirmReabrir = async () => {
+    if (!reabrirTarget) return
+    setReabrirBusy(true)
+    try {
+      const prev = prevEstadoMap[reabrirTarget.estado]
+      await cambiarEstadoOrden(reabrirTarget.id, prev)
+      notify.success(`Orden reabierta como "${ordenEstadoMeta[prev].label}".`)
+      if (detail?.id === reabrirTarget.id) setDetail((prev) => (prev ? { ...prev, estado: prev } : prev))
+      setReabrirTarget(null)
+      reload()
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'No se pudo reabrir la orden.')
+    } finally {
+      setReabrirBusy(false)
+    }
+  }
+
+  const marcarTodosItems = async () => {
+    if (!detail) return
+    const incompletos = (detail.items ?? []).filter((i) => !i.completado)
+    if (incompletos.length === 0) return
+    setMarcarTodosBusy(true)
+    try {
+      await Promise.all(incompletos.map((i) => marcarItemOrden(detail.id, i.id, true)))
+      setDetail((prev) => (prev ? { ...prev, items: (prev.items ?? []).map((i) => ({ ...i, completado: true })) } : prev))
+      notify.success('Todos los items quedaron marcados como completados.')
+      reload()
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'No se pudieron marcar los items.')
+    } finally {
+      setMarcarTodosBusy(false)
     }
   }
 
@@ -378,7 +445,6 @@ export default function Ordenes() {
         subtitle="Reparaciones en curso, terminadas y entregadas."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <SearchInput value={ordenes.q} onChange={ordenes.setQ} placeholder="Buscar por cliente, vehículo o n°…" width={{ xs: '100%', sm: 220 }} />
             <ExportExcelButton
               filename="ordenes"
               sheetName="Órdenes"
@@ -398,6 +464,16 @@ export default function Ordenes() {
         <ToggleButton value="año">Este año</ToggleButton>
         <ToggleButton value="todo">Todo</ToggleButton>
       </ToggleButtonGroup>
+
+      <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <AssignmentIcon fontSize="small" color="text.secondary" />
+          <Typography variant="body2" color="text.secondary">
+            {plural(ordenes.total, 'orden')}
+          </Typography>
+        </Box>
+        <SearchInput value={ordenes.q} onChange={ordenes.setQ} placeholder="Buscar por cliente, vehículo o n°…" width={{ xs: '100%', sm: 260 }} />
+      </Stack>
 
       {ordenes.loading ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
@@ -644,10 +720,10 @@ export default function Ordenes() {
                     <Stack key={item._key} direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ alignItems: { md: 'center' }, p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                       <ToggleButtonGroup size="small" exclusive value={item.tipo} onChange={(_, value) => value && handleItemTipo(index, value)}>
                         <ToggleButton value="mano_obra">Mano de obra</ToggleButton>
-                        <ToggleButton value="repuesto">Repuesto</ToggleButton>
+                        <ToggleButton value="repuesto">Producto</ToggleButton>
                       </ToggleButtonGroup>
                       {item.tipo === 'repuesto' ? (
-                        <TextField select label="Repuesto" value={item.repuesto_id} onChange={(e) => handleItemChange(index, 'repuesto_id', e.target.value)} required size="small" sx={{ flexGrow: 1 }}>
+                        <TextField select label="Producto" value={item.repuesto_id} onChange={(e) => handleItemChange(index, 'repuesto_id', e.target.value)} required size="small" sx={{ flexGrow: 1 }}>
                           {(repuestos.data ?? []).map((r) => (
                             <MenuItem key={r.id} value={r.id}>
                               {r.nombre} (stock: {r.stock_actual})
@@ -666,7 +742,7 @@ export default function Ordenes() {
                   ))}
                   {form.items.length === 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
-                      Agregá repuestos o mano de obra a la orden.
+                      Agregá productos o mano de obra a la orden.
                     </Typography>
                   )}
                 </Stack>
@@ -683,82 +759,27 @@ export default function Ordenes() {
         )}
       </AppDialog>
 
-      <AppDialog
+      <CobroDialog
         open={Boolean(cobroTarget)}
         onClose={() => setCobroTarget(null)}
         title={`Cobrar orden #${cobroTarget?.id}`}
         subtitle="Registrá el pago de la orden."
-        icon={<ReceiptIcon />}
-        iconBg="success.main"
-        maxWidth="xs"
-        actions={
-          <>
-            <Button onClick={() => setCobroTarget(null)} disabled={cobrando}>Cancelar</Button>
-            <Button onClick={confirmCobro} variant="contained" color="success" disabled={cobrando}>
-              {cobrando ? 'Registrando…' : 'Registrar cobro'}
-            </Button>
-          </>
-        }
-      >
-        <Stack spacing={2} sx={{ mt: 1 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-              {[
-                { label: 'Total', value: fmtMoney(cobroTarget?.total), color: 'text.primary' },
-                { label: 'Pagado', value: fmtMoney(cobroTarget?.total_pagado), color: 'success.main' },
-                { label: 'Saldo', value: fmtMoney(cobroTarget?.saldo_pendiente), color: 'error.main' },
-              ].map((cell) => (
-                <Box key={cell.label} sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', textAlign: 'center' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {cell.label}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 800, color: cell.color }}>
-                    {cell.value}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-            <TextField label="Monto" name="monto" type="number" value={pagoForm.monto} onChange={(e) => setPagoForm((prev) => ({ ...prev, monto: e.target.value }))} fullWidth slotProps={{ htmlInput: { min: 0 } }} autoFocus />
-            <TextField select label="Método" name="metodo" value={pagoForm.metodo} onChange={(e) => setPagoForm((prev) => ({ ...prev, metodo: e.target.value }))} fullWidth>
-              {Object.entries(pagoMetodoMeta).map(([metodo, meta]) => (
-                <MenuItem key={metodo} value={metodo}>
-                  {meta.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField label="Referencia (opcional)" name="referencia" value={pagoForm.referencia} onChange={(e) => setPagoForm((prev) => ({ ...prev, referencia: e.target.value }))} fullWidth />
-            {(cobroTarget?.pagos?.length ?? 0) > 0 && (
-              <Box>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                  Pagos previos
-                </Typography>
-                <List dense disablePadding>
-                  {(cobroTarget?.pagos ?? []).map((pago) => (
-                    <ListItem key={pago.id} disableGutters>
-                      <ListItemText primary={`${pagoMetodoMeta[pago.metodo]?.label ?? pago.metodo} — ${fmtMoney(pago.monto)}`} secondary={pago.referencia || fmtDateTime(pago.fecha)} />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
-          </Stack>
-      </AppDialog>
+        orden={cobroTarget}
+        form={pagoForm}
+        setForm={setPagoForm}
+        saving={cobrando}
+        onConfirm={confirmCobro}
+      />
 
-      <Modal open={Boolean(detail)} onClose={() => setDetail(null)}>
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: { xs: 'calc(100% - 24px)', sm: 760 },
-            maxHeight: 'calc(100% - 48px)',
-            overflowY: 'auto',
-            bgcolor: 'background.paper',
-            borderRadius: 3,
-            boxShadow: 24,
-            outline: 'none',
-          }}
-        >
+      <AppDialog
+        open={Boolean(detail)}
+        onClose={() => setDetail(null)}
+        maxWidth="md"
+        title={detail ? `Orden #${detail.id}` : ''}
+        subtitle={detail ? ordenEstadoMeta[detail.estado]?.label ?? detail.estado : ''}
+        icon={<AssignmentIcon />}
+        iconBg={detail ? `${ordenEstadoMeta[detail.estado]?.color}.main` : 'primary.main'}
+      >
           {detailLoading ? (
             <Box sx={{ p: 3 }}>
               <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
@@ -781,11 +802,15 @@ export default function Ordenes() {
                 onCobrar={() => { setDetail(null); openCobro(detail) }}
                 onEstado={(estado) => handleEstado(detail, estado)}
                 onTicket={() => setTicket(buildOrdenTicket(detail))}
+                onEdit={() => { setDetail(null); openForm(detail) }}
+                onDelete={() => { setDetail(null); setDeleteTarget(detail) }}
+                onReabrir={() => setReabrirTarget(detail)}
+                onMarcarTodos={marcarTodosItems}
+                marcarTodosBusy={marcarTodosBusy}
               />
             )
           )}
-        </Box>
-      </Modal>
+      </AppDialog>
 
       <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
 
@@ -802,20 +827,28 @@ export default function Ordenes() {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Eliminar orden"
-        message={`¿Eliminar la orden #${deleteTarget?.id}? Se devolverá el stock de los repuestos utilizados.`}
+        message={`¿Eliminar la orden #${deleteTarget?.id}? Se devolverá el stock de los productos utilizados.`}
         busy={deleting}
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        open={Boolean(reabrirTarget)}
+        title="Reabrir orden"
+        message={`¿Volver la orden #${reabrirTarget?.id} a "${ordenEstadoMeta[prevEstadoMap[reabrirTarget?.estado]]?.label}"? Vas a poder seguir trabajándola.`}
+        busy={reabrirBusy}
+        onClose={() => setReabrirTarget(null)}
+        onConfirm={confirmReabrir}
       />
     </Box>
   )
 }
 
-function DetailOrden({ orden, repById, onClose, onCobrar, onEstado, onTicket }) {
+function DetailOrden({ orden, repById, onCobrar, onEstado, onTicket, onEdit, onDelete, onReabrir, onMarcarTodos, marcarTodosBusy }) {
   const etapas = ['pendiente', 'en_ejecucion', 'terminado', 'entregado']
   const actualIndex = etapas.indexOf(orden.estado)
   const pctProgreso = Math.max(0, Math.round((actualIndex / (etapas.length - 1)) * 100))
-  const meta = ordenEstadoMeta[orden.estado] ?? { label: orden.estado, color: 'default' }
   const totalItems = orden.items?.length ?? 0
   const doneItems = (orden.items ?? []).filter((item) => item.completado).length
   const servicios = (orden.items ?? [])
@@ -835,35 +868,7 @@ function DetailOrden({ orden, repById, onClose, onCobrar, onEstado, onTicket }) 
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          p: 2.5,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'background.default'),
-          position: 'sticky',
-          top: 0,
-          zIndex: 1,
-        }}
-      >
-        <Box sx={{ width: 46, height: 46, borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: `${meta.color}.main`, color: '#fff', flexShrink: 0 }}>
-          <AssignmentIcon />
-        </Box>
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-            Orden #{orden.id}
-          </Typography>
-          <Chip size="small" label={meta.label} color={meta.color} sx={{ mt: 0.5, height: 20, fontSize: 11 }} />
-        </Box>
-        <IconButton onClick={onClose} aria-label="Cerrar" size="small">
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      <Box sx={{ p: 2.5 }}>
+      <Box sx={{ p: 0 }}>
         <Box sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'background.default') }}>
           <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
@@ -930,15 +935,22 @@ function DetailOrden({ orden, repById, onClose, onCobrar, onEstado, onTicket }) 
           </Box>
 
           <Box>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 1 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
                 Items ({totalItems})
               </Typography>
-              {totalItems > 0 && (
-                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                  {doneItems}/{totalItems} listos
-                </Typography>
-              )}
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                {totalItems > 0 && (
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                    {doneItems}/{totalItems} listos
+                  </Typography>
+                )}
+                {totalItems > 0 && doneItems < totalItems && (
+                  <Button size="small" onClick={onMarcarTodos} disabled={marcarTodosBusy} sx={{ textTransform: 'none' }}>
+                    {marcarTodosBusy ? 'Marcando…' : 'Marcar todos'}
+                  </Button>
+                )}
+              </Stack>
             </Stack>
             {totalItems > 0 && (
               <LinearProgress
@@ -969,10 +981,10 @@ function DetailOrden({ orden, repById, onClose, onCobrar, onEstado, onTicket }) 
                       )}
                       <Box sx={{ minWidth: 0 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600, textDecoration: item.completado ? 'line-through' : 'none', color: item.completado ? 'text.secondary' : 'text.primary' }} noWrap>
-                          {item.tipo === 'repuesto' ? (repById[item.repuesto_id]?.nombre ?? item.descripcion ?? 'Repuesto') : item.descripcion || 'Mano de obra'}
+                          {item.tipo === 'repuesto' ? (repById[item.repuesto_id]?.nombre ?? item.descripcion ?? 'Producto') : item.descripcion || 'Mano de obra'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {item.tipo === 'repuesto' ? 'Repuesto' : 'Mano de obra'} · {item.cantidad} × {fmtMoney(item.precio)}
+                          {item.tipo === 'repuesto' ? 'Producto' : 'Mano de obra'} · {item.cantidad} × {fmtMoney(item.precio)}
                         </Typography>
                       </Box>
                     </Stack>
@@ -1021,6 +1033,17 @@ function DetailOrden({ orden, repById, onClose, onCobrar, onEstado, onTicket }) 
               )}
               <Button variant="outlined" startIcon={<PrintIcon />} onClick={onTicket} sx={{ flexGrow: 1 }}>
                 Imprimir ticket
+              </Button>
+              {actualIndex > 0 && (
+                <Button variant="text" color="inherit" onClick={onReabrir} sx={{ flexGrow: 1 }}>
+                  Reabrir
+                </Button>
+              )}
+              <Button variant="outlined" startIcon={<EditIcon />} onClick={onEdit} sx={{ flexGrow: 1 }}>
+                Editar
+              </Button>
+              <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={onDelete} sx={{ flexGrow: 1 }}>
+                Eliminar
               </Button>
             </Box>
           </Box>

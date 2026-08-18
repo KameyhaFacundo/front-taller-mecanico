@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Box, Button, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { Box, Button, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -259,18 +259,22 @@ export default function Repuestos() {
                         {r.stock_actual}
                       </Typography>
                     </TableCell>
-                    <TableCell align="center" color="text.secondary">
+                    <TableCell align="center" sx={{ color: 'text.secondary' }}>
                       {r.stock_minimo}
                     </TableCell>
                     <TableCell align="right">{r.precio_costo != null ? fmtMoney(r.precio_costo) : '—'}</TableCell>
                     <TableCell align="right">{r.precio_venta != null ? fmtMoney(r.precio_venta) : '—'}</TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => openForm(r)} aria-label="Editar">
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(r)} aria-label="Eliminar">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      <Tooltip title="Editar">
+                        <IconButton size="small" onClick={() => openForm(r)} aria-label="Editar">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" color="error" onClick={() => setDeleteTarget(r)} aria-label="Eliminar">
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 )
@@ -293,7 +297,7 @@ export default function Repuestos() {
         onClose={() => setOpen(false)}
         maxWidth="sm"
         title={form.id ? 'Editar producto' : 'Nuevo producto'}
-        subtitle="Repuesto o insumo del taller con su stock y precios."
+        subtitle="Producto o insumo del taller con su stock y precios."
         icon={<Inventory2Icon />}
         iconBg="primary.main"
         actions={

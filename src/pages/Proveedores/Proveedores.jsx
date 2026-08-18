@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Button, IconButton, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { Box, Button, IconButton, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -131,7 +131,7 @@ export default function Proveedores() {
     <Box>
       <PageHeader
         title="Proveedores"
-        subtitle="Proveedores de repuestos e insumos del taller."
+        subtitle="Proveedores de productos e insumos del taller."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             <ExportExcelButton
@@ -149,9 +149,12 @@ export default function Proveedores() {
       />
 
       <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5, mb: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          {plural(proveedores.total, 'proveedor')}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <LocalShippingIcon fontSize="small" color="text.secondary" />
+          <Typography variant="body2" color="text.secondary">
+            {plural(proveedores.total, 'proveedor')}
+          </Typography>
+        </Box>
         <SearchInput value={proveedores.q} onChange={proveedores.setQ} placeholder="Buscar por nombre, teléfono o CUIT…" width={{ xs: '100%', sm: 300 }} />
       </Stack>
 
@@ -162,7 +165,7 @@ export default function Proveedores() {
           <EmptyState
             icon={LocalShippingIcon}
             title={proveedores.q ? 'Sin resultados' : 'No hay proveedores'}
-            description={proveedores.q ? 'Probá con otro término de búsqueda.' : 'Cargá proveedores para asociarlos a repuestos y compras.'}
+            description={proveedores.q ? 'Probá con otro término de búsqueda.' : 'Cargá proveedores para asociarlos a productos y compras.'}
             actionLabel={!proveedores.q ? 'Nuevo proveedor' : undefined}
             onAction={() => openForm(null)}
           />
@@ -228,12 +231,16 @@ export default function Proveedores() {
                   <TableCell>{p.cuit || '—'}</TableCell>
                   <TableCell>{p.domicilio || '—'}</TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openForm(p)} aria-label="Editar">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(p)} aria-label="Eliminar">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Editar">
+                      <IconButton size="small" onClick={() => openForm(p)} aria-label="Editar">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Eliminar">
+                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(p)} aria-label="Eliminar">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -255,7 +262,7 @@ export default function Proveedores() {
         onClose={() => setOpen(false)}
         maxWidth="sm"
         title={form.id ? 'Editar proveedor' : 'Nuevo proveedor'}
-        subtitle="Datos del proveedor de repuestos."
+        subtitle="Datos del proveedor de productos."
         icon={<LocalShippingIcon />}
         iconBg="primary.main"
         actions={

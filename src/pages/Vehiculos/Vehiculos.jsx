@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Box, Button, Card, CardContent, Chip, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import AddIcon from '@mui/icons-material/Add'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import PersonIcon from '@mui/icons-material/Person'
 import LocalOfferIcon from '@mui/icons-material/LocalOffer'
@@ -136,6 +137,9 @@ export default function Vehiculos() {
               rowsFetcher={async () => (await listVehiculos({ q: vehiculos.q, per_page: 5000 })).data}
             />
             <ImportExcelButton onImport={handleImport} />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
+              Nuevo vehículo
+            </Button>
             <Button variant="outlined" startIcon={<LocalOfferIcon />} onClick={() => setMarcasOpen(true)}>
               Marcas
             </Button>
@@ -147,9 +151,12 @@ export default function Vehiculos() {
       />
 
       <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5, mb: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          {plural(vehiculos.total, 'vehículo')}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <DirectionsCarIcon fontSize="small" color="text.secondary" />
+          <Typography variant="body2" color="text.secondary">
+            {plural(vehiculos.total, 'vehículo')}
+          </Typography>
+        </Box>
         <SearchInput value={vehiculos.q} onChange={vehiculos.setQ} placeholder="Buscar por patente, marca o modelo…" width={{ xs: '100%', sm: 300 }} />
       </Stack>
 
@@ -204,9 +211,14 @@ export default function Vehiculos() {
                         {cliente?.nombre ?? 'Sin cliente'}
                       </Typography>
                     </Stack>
-                    {v.kilometros != null && v.kilometros !== '' && (
+                    {v.anio && (
                       <Typography variant="caption" color="text.secondary">
-                        {v.anio ? `${v.anio} · ` : ''}
+                        {v.anio}
+                        {v.kilometros != null && v.kilometros !== '' && <> · {fmtNum(v.kilometros)} km</>}
+                      </Typography>
+                    )}
+                    {!v.anio && v.kilometros != null && v.kilometros !== '' && (
+                      <Typography variant="caption" color="text.secondary">
                         {fmtNum(v.kilometros)} km
                       </Typography>
                     )}
@@ -222,7 +234,7 @@ export default function Vehiculos() {
           rowsPerPage={vehiculos.perPage}
           onPageChange={vehiculos.onPageChange}
           onRowsPerPageChange={vehiculos.onPerPageChange}
-          rowsPerPageOptions={[12, 24, 48, 96]}
+          rowsPerPageOptions={[10, 25, 50, 100]}
           sx={{ mt: 1, borderTop: 'none' }}
         />
         </>
@@ -231,7 +243,7 @@ export default function Vehiculos() {
       <AppDialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Editar vehículo"
+        title={form.id ? 'Editar vehículo' : 'Nuevo vehículo'}
         subtitle="El vehículo se carga una sola vez y se vincula a sus dueños desde Clientes."
         icon={<DirectionsCarIcon />}
         iconBg={(t) => t.custom.brandGradient}

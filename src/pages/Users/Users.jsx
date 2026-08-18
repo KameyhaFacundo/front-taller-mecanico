@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Button, Chip, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { Box, Button, Chip, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -81,7 +81,7 @@ export default function Users() {
   }
 
   const columns = [
-    { header: 'Nombre', key: 'name', render: (u) => u.name },
+    { header: 'Usuario', key: 'name', render: (u) => u.name },
     { header: 'Correo', key: 'email', render: (u) => u.email },
     { header: 'Rol', key: 'role', render: (u) => (u.role === 'admin' ? 'Admin' : 'Empleado') },
   ]
@@ -185,12 +185,16 @@ export default function Users() {
                     <Chip size="small" label={targetUser.role === 'admin' ? 'Admin' : 'Empleado'} color={targetUser.role === 'admin' ? 'primary' : 'default'} variant={targetUser.role === 'admin' ? 'filled' : 'outlined'} />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openForm(targetUser)} aria-label="Editar">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(targetUser)} disabled={targetUser.id === currentUser?.id} aria-label="Eliminar">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Editar">
+                      <IconButton size="small" onClick={() => openForm(targetUser)} aria-label="Editar">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Eliminar">
+                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(targetUser)} disabled={targetUser.id === currentUser?.id} aria-label="Eliminar">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}

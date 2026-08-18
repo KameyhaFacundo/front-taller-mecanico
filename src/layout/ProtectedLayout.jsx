@@ -117,7 +117,7 @@ export default function ProtectedLayout() {
   })
 
   const desktopNav = (
-    <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
+    <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5, overflowX: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
       {allSections.map((section) => {
         const Icon = section.icon
         const active = isSectionActive(section)
@@ -232,7 +232,7 @@ export default function ProtectedLayout() {
             </Typography>
           </Box>
 
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center' }}>{desktopNav}</Box>
+          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center', minWidth: 0 }}>{desktopNav}</Box>
 
           <Box sx={{ display: { xs: 'flex', md: 'none' }, flexGrow: 1 }} />
 

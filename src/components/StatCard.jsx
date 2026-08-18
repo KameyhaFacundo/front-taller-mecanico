@@ -3,10 +3,23 @@ import { alpha } from '@mui/material/styles'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import TrendingDownIcon from '@mui/icons-material/TrendingDown'
 
-export default function StatCard({ label, value, icon: Icon, color = 'primary', trend, trendLabel }) {
+export default function StatCard({ label, value, icon: Icon, color = 'primary', trend, trendLabel, onClick }) {
   const trendUp = trend != null && trend >= 0
   return (
-    <Card variant="outlined" sx={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
+    <Card
+      variant="outlined"
+      onClick={onClick}
+      sx={{
+        height: '100%',
+        overflow: 'hidden',
+        position: 'relative',
+        ...(onClick && {
+          cursor: 'pointer',
+          transition: 'transform 0.15s ease, box-shadow 0.2s ease',
+          '&:hover': { transform: 'translateY(-2px)', boxShadow: (theme) => theme.custom.shadowHover },
+        }),
+      }}
+    >
       <Box
         sx={{
           position: 'absolute',

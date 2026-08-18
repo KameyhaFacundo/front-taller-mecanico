@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Box, Button, Chip, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
@@ -6,7 +7,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import PrintIcon from '@mui/icons-material/Print'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
-import { createCompra, deleteCompra, importCompras, listCompras, listProveedoresOptions, listRepuestosOptions, updateCompra } from '../../services/stockApi'
+import { createCompra, deleteCompra, getCompra, importCompras, listCompras, listProveedoresOptions, listRepuestosOptions, updateCompra } from '../../services/stockApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { usePaginatedData } from '../../hooks/usePaginatedData'
 import { useNotify } from '../../context/useNotify'
@@ -20,14 +21,18 @@ import ExportExcelButton from '../../components/ExportExcelButton'
 import Pagination from '../../components/Pagination'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import TicketDialog from '../../components/TicketDialog'
+import RowActionsMenu from '../../components/RowActionsMenu'
 import { compraEstadoMeta } from '../../utils/meta'
 import { fmtMoney, fmtDate, parseNumero, plural } from '../../utils/format'
 
 const emptyCompra = { id: null, proveedor_id: '', fecha: '', estado_pago: 'pagado', items: [] }
 const emptyItem = { repuesto_id: '', descripcion: '', cantidad: 1, precio: '' }
+const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `k-${Date.now()}-${Math.random().toString(36).slice(2)}`)
 
 export default function Compras() {
   const notify = useNotify()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [form, setForm] = useState(emptyCompra)
   const [open, setOpen] = useState(false)
   const [detail, setDetail] = useState(null)
@@ -46,6 +51,19 @@ export default function Compras() {
   const repById = useMemo(() => Object.fromEntries((repuestos.data ?? []).map((r) => [r.id, r])), [repuestos.data])
   const filtered = compras.rows
 
+  // "verCompra" llega desde Caja (estado de navegación): abre el detalle de
+  // esa compra directamente sin tener que buscarla en la lista.
+  useEffect(() => {
+    if (location.state?.verCompra) {
+      const id = Number(location.state.verCompra)
+      navigate(location.pathname, { replace: true, state: {} })
+      getCompra(id)
+        .then(setDetail)
+        .catch(() => notify.error('No se pudo abrir la compra.'))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleChange = (event) => setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }))
 
   const handleItemChange = (index, field, value) => setForm((prev) => ({ ...prev, items: prev.items.map((item, i) => (i === index ? { ...item, [field]: value } : item)) }))
@@ -62,7 +80,7 @@ export default function Compras() {
       }),
     }))
 
-  const addItem = () => setForm((prev) => ({ ...prev, items: [...prev.items, { ...emptyItem }] }))
+  const addItem = () => setForm((prev) => ({ ...prev, items: [...prev.items, { ...emptyItem, _key: uid() }] }))
   const removeItem = (index) => setForm((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
 
   const subtotalItem = (item) => (Number.isNaN(parseNumero(item.cantidad)) ? 0 : parseNumero(item.cantidad)) * (Number.isNaN(parseNumero(item.precio)) ? 0 : parseNumero(item.precio))
@@ -102,7 +120,7 @@ export default function Compras() {
         return
       }
       if (!item.repuesto_id && !String(item.descripcion ?? '').trim()) {
-        notify.error('Cada item necesita un repuesto o una descripción.')
+        notify.error('Cada item necesita un producto o una descripción.')
         return
       }
     }
@@ -189,7 +207,7 @@ export default function Compras() {
     const totalFallos = result.fallos + sinProveedor.size
     if (result.creados) notify.success(`${plural(result.creados, 'compra')} importadas.`)
     if (totalFallos === 0 && result.creados === 0) {
-      notify.warning('No se pudo importar: verificá que existan proveedor y repuestos con esos nombres.')
+      notify.warning('No se pudo importar: verificá que existan proveedor y productos con esos nombres.')
     } else if (totalFallos) {
       const detalle = [...result.errores, ...[...sinProveedor].map((p) => `Proveedor "${p}" no encontrado`)]
       notify.warning(`${plural(totalFallos, 'fila')} no importadas: ${detalle.slice(0, 3).join('; ')}${totalFallos > 3 ? '…' : ''}`)
@@ -218,7 +236,7 @@ export default function Compras() {
   })
 
   const columns = [
-    { header: 'Repuesto', key: 'repuesto', render: (i) => repById[i.repuesto_id]?.nombre ?? i.descripcion ?? '—' },
+    { header: 'Producto', key: 'repuesto', render: (i) => repById[i.repuesto_id]?.nombre ?? i.descripcion ?? '—' },
     { header: 'Cantidad', key: 'cantidad' },
     { header: 'Precio', key: 'precio', render: (i) => fmtMoney(i.precio) },
     { header: 'Proveedor', key: 'proveedor' },
@@ -259,7 +277,7 @@ export default function Compras() {
             {plural(compras.total, 'compra')}
           </Typography>
         </Box>
-        <SearchInput value={compras.q} onChange={compras.setQ} placeholder="Buscar por proveedor o repuesto…" width={{ xs: '100%', sm: 300 }} />
+        <SearchInput value={compras.q} onChange={compras.setQ} placeholder="Buscar por proveedor o producto…" width={{ xs: '100%', sm: 300 }} />
       </Stack>
 
       {compras.loading ? (
@@ -313,15 +331,14 @@ export default function Compras() {
                     <IconButton size="small" onClick={() => setTicket(buildCompraTicket(compra))} aria-label="Imprimir ticket">
                       <PrintIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => setDetail(compra)} aria-label="Ver detalle">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => openForm(compra)} aria-label="Editar">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(compra)} aria-label="Eliminar">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <RowActionsMenu
+                      items={[
+                        { label: 'Ver detalle', icon: <VisibilityIcon fontSize="small" />, onClick: () => setDetail(compra) },
+                        { label: 'Editar', icon: <EditIcon fontSize="small" />, onClick: () => openForm(compra) },
+                        { divider: true },
+                        { label: 'Eliminar', icon: <DeleteIcon fontSize="small" />, onClick: () => setDeleteTarget(compra), color: 'error' },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -343,7 +360,7 @@ export default function Compras() {
         onClose={() => setOpen(false)}
         maxWidth="md"
         title={form.id ? `Editar compra #${form.id}` : 'Nueva compra'}
-        subtitle="Registrá la compra de repuestos a un proveedor."
+        subtitle="Registrá la compra de productos a un proveedor."
         icon={<ShoppingCartIcon />}
         iconBg="primary.main"
         actions={
@@ -384,11 +401,11 @@ export default function Compras() {
                 </Stack>
                 <Stack spacing={1.5}>
                   {form.items.map((item, index) => (
-                    <Box key={index} sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                    <Box key={item._key ?? index} sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ alignItems: { md: 'center' } }}>
-                        <TextField select label="Repuesto" value={item.repuesto_id} onChange={(e) => handleItemRepuesto(index, e.target.value)} size="small" sx={{ flexGrow: 1 }}>
+                        <TextField select label="Producto" value={item.repuesto_id} onChange={(e) => handleItemRepuesto(index, e.target.value)} size="small" sx={{ flexGrow: 1 }}>
                           <MenuItem value="">
-                            <em>Repuesto suelto (ingresá descripción)</em>
+                            <em>Producto suelto (ingresá descripción)</em>
                           </MenuItem>
                           {(repuestos.data ?? []).map((r) => (
                             <MenuItem key={r.id} value={r.id}>
@@ -410,7 +427,7 @@ export default function Compras() {
                   ))}
                   {form.items.length === 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
-                      Agregá los repuestos o insumos comprados.
+                      Agregá los productos o insumos comprados.
                     </Typography>
                   )}
                 </Stack>
@@ -476,7 +493,7 @@ export default function Compras() {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Repuesto / Detalle</TableCell>
+                    <TableCell>Producto / Detalle</TableCell>
                     <TableCell align="right">Cant.</TableCell>
                     <TableCell align="right">Precio unit.</TableCell>
                     <TableCell align="right">Subtotal</TableCell>
