@@ -1,0 +1,27 @@
+export const MARCAS_MODELOS = {
+  Fiat: ['500', 'Argo', 'Cronos', 'Dobló', 'Fastback', 'Fiorino', 'Mobi', 'Palio', 'Punto', 'Siena', 'Strada', 'Tipo', 'Toro'],
+  Chevrolet: ['Agile', 'Blazer', 'Cobalt', 'Corsa', 'Classic', 'Cruze', 'Equinox', 'Montana', 'Onix', 'Prisma', 'S10', 'Spark', 'Spin', 'Tracker'],
+  Ford: ['Bronco Sport', 'EcoSport', 'F-100', 'F-150', 'Fiesta', 'Focus', 'Ka', 'Mondeo', 'Ranger', 'Taunus', 'Territory'],
+  Volkswagen: ['Amarok', 'Bora', 'Fox', 'Gol', 'Golf', 'Jetta', 'Nivus', 'Passat', 'Polo', 'Saveiro', 'Suran', 'T-Cross', 'Taos', 'Tiguan', 'Up', 'Vento', 'Virtus', 'Voyage'],
+  Renault: ['Alaskan', 'Arkana', 'Captur', 'Clio', 'Duster', 'Fluence', 'Kangoo', 'Kwid', 'Logan', 'Megane', 'Sandero', 'Stepway', 'Symbol', 'Trafic'],
+  Peugeot: ['205', '206', '207', '208', '301', '308', '408', '2008', '3008', '5008', 'Boxer', 'Expert', 'Partner', 'RCZ'],
+  Toyota: ['Camry', 'Corolla', 'Etios', 'Hiace', 'Hilux', 'Land Cruiser', 'Prius', 'RAV4', 'SW4', 'Yaris'],
+  Nissan: ['Frontier', 'Kicks', 'Leaf', 'March', 'NP300', 'Sentra', 'Versa', 'X-Trail'],
+  Honda: ['Accord', 'Civic', 'City', 'CR-V', 'Fit', 'HR-V', 'Pilot', 'WR-V'],
+  Hyundai: ['Accent', 'Creta', 'Elantra', 'Grand i10', 'H-1', 'HB20', 'i30', 'Santa Fe', 'Tucson'],
+  Kia: ['Cerato', 'Mohave', 'Picanto', 'Rio', 'Sorento', 'Soul', 'Sportage', 'Stonic'],
+  'Citroën': ['Aircross', 'Berlingo', 'C3', 'C4', 'C4 Cactus', 'C5 Aircross', 'C-Elysée', 'Jumper'],
+  'Mercedes-Benz': ['Clase A', 'Clase B', 'Clase C', 'Clase E', 'Clase G', 'Clase S', 'GLA', 'GLC', 'Sprinter', 'Vito'],
+  BMW: ['Serie 1', 'Serie 2', 'Serie 3', 'Serie 4', 'Serie 5', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6'],
+  Audi: ['A1', 'A3', 'A4', 'A5', 'A6', 'A7', 'Q2', 'Q3', 'Q5', 'Q7', 'Q8', 'e-tron'],
+  Jeep: ['Cherokee', 'Compass', 'Gladiator', 'Grand Cherokee', 'Renegade', 'Wrangler'],
+  Suzuki: ['Alto', 'Baleno', 'Grand Vitara', 'Jimny', 'Swift', 'Vitara'],
+  Mitsubishi: ['ASX', 'Eclipse Cross', 'L200', 'Montero', 'Outlander'],
+  Dodge: ['Challenger', 'Charger', 'Durango', 'Journey', 'RAM'],
+  Ram: ['1500', '2500', 'Rampage'],
+  Chery: ['Arrizo', 'QQ', 'Tiggo 2', 'Tiggo 3', 'Tiggo 7', 'Tiggo 8'],
+  Changan: ['Alsvin', 'CS35', 'CS55', 'Eado', 'Uni-T'],
+  Baic: ['BJ20', 'X35', 'X55'],
+}
+
+export const modelosDeMarca = (marca) => MARCAS_MODELOS[marca] ?? []
