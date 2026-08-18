@@ -25,11 +25,13 @@ import PersonIcon from '@mui/icons-material/Person'
 import PhoneIcon from '@mui/icons-material/Phone'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
+import PrintIcon from '@mui/icons-material/Print'
 import { crearTurnoPublico, listDisponibilidadPublica, listServiciosPublicos } from '../../services/publicoApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import MarcaAutocomplete from '../../components/MarcaAutocomplete'
 import ModeloAutocomplete from '../../components/ModeloAutocomplete'
-import { fmtDate, fmtMoney, fmtTime, fmtWeekdayShort } from '../../utils/format'
+import TicketDialog from '../../components/TicketDialog'
+import { fmtDate, fmtDateTime, fmtMoney, fmtTime, fmtWeekdayShort } from '../../utils/format'
 import { waLink, waLinkTaller, waMensajeTurno } from '../../utils/wa'
 
 const PASOS = ['Tus datos', 'Tu vehículo', 'Servicio y horario', 'Confirmación']
@@ -45,6 +47,7 @@ export default function AgendarTurno() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [turno, setTurno] = useState(null)
+  const [ticket, setTicket] = useState(null)
   const [huecos, setHuecos] = useState([])
   const [huecosLoading, setHuecosLoading] = useState(false)
 
@@ -221,6 +224,28 @@ export default function AgendarTurno() {
 
   const nombresTurno = (t) => (t?.servicios?.length ? t.servicios.map((s) => s.nombre).join(' + ') : t?.servicio?.nombre ?? '—')
 
+  const buildTurnoTicket = (t) => {
+    const vehiculo = t.vehiculo
+    const serviciosTurno = t?.servicios?.length ? t.servicios : t?.servicio ? [t.servicio] : []
+    return {
+      titulo: 'Turno solicitado',
+      numero: t.id,
+      fecha: fmtDateTime(t.fecha_hora),
+      meta: [
+        { label: 'Cliente', value: vehiculo?.cliente?.nombre ?? '—' },
+        { label: 'Vehículo', value: vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} · ${vehiculo.patente}` : '—' },
+        { label: 'Día y hora', value: `${fmtDate(t.fecha_hora)} · ${fmtTime(t.fecha_hora)}` },
+      ],
+      items: serviciosTurno.map((s) => ({
+        descripcion: s.nombre,
+        detalle: s.duracion_min ? `${s.duracion_min} min` : undefined,
+        subtotal: s.precio ? fmtMoney(s.precio) : '',
+      })),
+      totales: [{ label: 'Estado', value: 'Pendiente de confirmación' }],
+      notas: ['Te vamos a contactar por teléfono o WhatsApp para confirmarlo.'],
+    }
+  }
+
   const etiquetaDia = (d) => {
     const esHoy = d.toDateString() === new Date().toDateString()
     return `${esHoy ? 'Hoy' : fmtWeekdayShort(d)} ${d.getDate()}/${d.getMonth() + 1}`
@@ -331,6 +356,9 @@ export default function AgendarTurno() {
                 })()}
                 <Button onClick={reset} variant="outlined" fullWidth>
                   Solicitar otro turno
+                </Button>
+                <Button variant="outlined" startIcon={<PrintIcon />} fullWidth onClick={() => setTicket(buildTurnoTicket(turno))}>
+                  Imprimir comprobante
                 </Button>
               </Stack>
             </Paper>
@@ -666,6 +694,8 @@ export default function AgendarTurno() {
           )}
         </Box>
       </Box>
+
+      <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
     </Box>
   )
 }

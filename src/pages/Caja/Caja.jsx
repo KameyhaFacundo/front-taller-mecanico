@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
+import PrintIcon from '@mui/icons-material/Print'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import TrendingDownIcon from '@mui/icons-material/TrendingDown'
@@ -37,8 +38,9 @@ import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
+import TicketDialog from '../../components/TicketDialog'
 import { pagoMetodoMeta } from '../../utils/meta'
-import { fmtMoney, fmtDate } from '../../utils/format'
+import { fmtMoney, fmtDate, fmtDateTime } from '../../utils/format'
 
 export default function Caja() {
   const notify = useNotify()
@@ -46,6 +48,7 @@ export default function Caja() {
   const [rango, setRango] = useState('mes')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
+  const [ticket, setTicket] = useState(null)
 
   const params = useMemo(() => {
     const now = new Date()
@@ -92,6 +95,29 @@ export default function Caja() {
       setDeleteTarget(null)
     } finally {
       setDeleteBusy(false)
+    }
+  }
+
+  const buildMovTicket = (m) => {
+    const esIngreso = m.tipo === 'ingreso'
+    const detalle = esIngreso
+      ? (m.orden_trabajo?.cliente?.nombre ?? m.orden_trabajo?.vehiculo?.cliente?.nombre ?? `Orden #${m.orden_trabajo?.id ?? '—'}`)
+      : (m.proveedor?.nombre ?? m.descripcion ?? 'Egreso')
+    return {
+      titulo: esIngreso ? 'Comprobante de cobro' : 'Comprobante de egreso',
+      numero: m.id,
+      fecha: fmtDateTime(m.fecha),
+      meta: [
+        { label: 'Tipo', value: esIngreso ? 'Ingreso' : 'Egreso' },
+        { label: 'Detalle', value: detalle },
+        ...(m.orden_trabajo?.id ? [{ label: 'Orden', value: `#${m.orden_trabajo.id}` }] : []),
+        ...(m.compra_id ? [{ label: 'Compra', value: `#${m.compra_id}` }] : []),
+        ...(m.metodo ? [{ label: 'Método', value: pagoMetodoMeta[m.metodo]?.label ?? m.metodo }] : []),
+        ...(m.referencia ? [{ label: 'Referencia', value: m.referencia }] : []),
+      ],
+      items: [],
+      totales: [{ label: esIngreso ? 'Cobrado' : 'Pagado', value: fmtMoney(m.monto) }],
+      notas: [],
     }
   }
 
@@ -206,6 +232,9 @@ export default function Caja() {
                       </Typography>
                     </TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      <IconButton size="small" onClick={() => setTicket(buildMovTicket(pago))} aria-label="Imprimir ticket">
+                        <PrintIcon fontSize="small" />
+                      </IconButton>
                       <IconButton size="small" color="error" onClick={() => setDeleteTarget(pago)} aria-label="Eliminar">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -278,19 +307,29 @@ export default function Caja() {
                     </TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                       {esMirror ? (
-                        <Typography
-                          component={RouterLink}
-                          to="/compras"
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                        >
-                          Ver compra #{m.compra_id}
-                        </Typography>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                          <IconButton size="small" onClick={() => setTicket(buildMovTicket(m))} aria-label="Imprimir ticket">
+                            <PrintIcon fontSize="small" />
+                          </IconButton>
+                          <Typography
+                            component={RouterLink}
+                            to="/compras"
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                          >
+                            Ver compra #{m.compra_id}
+                          </Typography>
+                        </Stack>
                       ) : (
-                        <IconButton size="small" color="error" onClick={() => setDeleteTarget(m)} aria-label="Eliminar">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <>
+                          <IconButton size="small" onClick={() => setTicket(buildMovTicket(m))} aria-label="Imprimir ticket">
+                            <PrintIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => setDeleteTarget(m)} aria-label="Eliminar">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </>
                       )}
                     </TableCell>
                   </TableRow>
@@ -317,6 +356,8 @@ export default function Caja() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />
+
+      <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
     </Box>
   )
 }

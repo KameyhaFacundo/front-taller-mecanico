@@ -38,6 +38,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import EventIcon from '@mui/icons-material/Event'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import CloseIcon from '@mui/icons-material/Close'
+import PrintIcon from '@mui/icons-material/Print'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import PersonIcon from '@mui/icons-material/Person'
 import EngineeringIcon from '@mui/icons-material/Engineering'
@@ -59,6 +60,7 @@ import AppDialog from '../../components/AppDialog'
 import ExportExcelButton from '../../components/ExportExcelButton'
 import VehiculoPicker from '../../components/VehiculoPicker'
 import NuevoVehiculoDialog from '../../components/NuevoVehiculoDialog'
+import TicketDialog from '../../components/TicketDialog'
 import { ordenEstadoMeta, ordenNextEstados, pagoMetodoMeta } from '../../utils/meta'
 import { fmtMoney, fmtDateTime, fmtDateTimeShort, fmtVehiculo, parseNumero, toISODate } from '../../utils/format'
 import { waLink, waMensajeOrden } from '../../utils/wa'
@@ -87,6 +89,7 @@ export default function Ordenes() {
   const [pagoForm, setPagoForm] = useState({ monto: '', metodo: 'efectivo', referencia: '' })
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [ticket, setTicket] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
   const [vehNuevoOpen, setVehNuevoOpen] = useState(false)
   const [rango, setRango] = useState('todo')
@@ -142,6 +145,32 @@ export default function Ordenes() {
   const removeItem = (index) => setForm((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
 
   const subtotalForm = form.items.reduce((acc, item) => acc + (Number.isNaN(parseNumero(item.precio)) ? 0 : parseNumero(item.precio)) * (Number.isNaN(parseNumero(item.cantidad)) ? 0 : parseNumero(item.cantidad)), 0)
+
+  const buildOrdenTicket = (orden) => {
+    const veh = orden.vehiculo
+    return {
+      titulo: 'Orden de trabajo',
+      numero: orden.id,
+      fecha: fmtDateTime(orden.fecha_inicio ?? orden.fecha_fin),
+      meta: [
+        { label: 'Cliente', value: veh?.cliente?.nombre ?? '—' },
+        { label: 'Vehículo', value: veh ? fmtVehiculo(veh) : '—' },
+        { label: 'Responsable', value: orden.asignado?.name ?? 'Sin responsable' },
+        { label: 'Estado', value: ordenEstadoMeta[orden.estado]?.label ?? orden.estado },
+      ],
+      items: (orden.items ?? []).map((item) => ({
+        descripcion: item.tipo === 'repuesto' ? (repById[item.repuesto_id]?.nombre ?? item.descripcion ?? 'Repuesto') : item.descripcion || 'Mano de obra',
+        detalle: `${item.tipo === 'repuesto' ? 'Repuesto' : 'Mano de obra'} · ${item.cantidad} × ${fmtMoney(item.precio)}`,
+        subtotal: fmtMoney(Number(item.cantidad) * Number(item.precio)),
+      })),
+      totales: [
+        { label: 'Total', value: fmtMoney(orden.total) },
+        { label: 'Pagado', value: fmtMoney(orden.total_pagado) },
+        { label: 'Saldo', value: fmtMoney(orden.saldo_pendiente) },
+      ],
+      notas: (orden.pagos ?? []).map((pago) => `Pago: ${pagoMetodoMeta[pago.metodo]?.label ?? pago.metodo} · ${fmtMoney(pago.monto)}${pago.referencia ? ` · ${pago.referencia}` : ''}`),
+    }
+  }
 
   const reload = () => {
     ordenes.reload()
@@ -751,11 +780,14 @@ export default function Ordenes() {
                 onClose={() => setDetail(null)}
                 onCobrar={() => { setDetail(null); openCobro(detail) }}
                 onEstado={(estado) => handleEstado(detail, estado)}
+                onTicket={() => setTicket(buildOrdenTicket(detail))}
               />
             )
           )}
         </Box>
       </Modal>
+
+      <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
 
       <NuevoVehiculoDialog
         open={vehNuevoOpen}
@@ -779,7 +811,7 @@ export default function Ordenes() {
   )
 }
 
-function DetailOrden({ orden, repById, onClose, onCobrar, onEstado }) {
+function DetailOrden({ orden, repById, onClose, onCobrar, onEstado, onTicket }) {
   const etapas = ['pendiente', 'en_ejecucion', 'terminado', 'entregado']
   const actualIndex = etapas.indexOf(orden.estado)
   const pctProgreso = Math.max(0, Math.round((actualIndex / (etapas.length - 1)) * 100))
@@ -987,6 +1019,9 @@ function DetailOrden({ orden, repById, onClose, onCobrar, onEstado }) {
                   Cobrar {fmtMoney(orden.saldo_pendiente)}
                 </Button>
               )}
+              <Button variant="outlined" startIcon={<PrintIcon />} onClick={onTicket} sx={{ flexGrow: 1 }}>
+                Imprimir ticket
+              </Button>
             </Box>
           </Box>
         </Box>

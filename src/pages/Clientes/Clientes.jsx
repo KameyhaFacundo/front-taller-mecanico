@@ -1,10 +1,16 @@
 import { useState } from 'react'
+import { alpha } from '@mui/material/styles'
 import {
   Box,
   Button,
   Chip,
   IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  MenuItem,
   Paper,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -25,7 +31,9 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import GroupIcon from '@mui/icons-material/Group'
 import PersonIcon from '@mui/icons-material/Person'
-import { createCliente, deleteCliente, importClientes, listClientes, updateCliente, updateVehiculo, agregarVehiculoCliente, quitarVehiculoCliente } from '../../services/clientesApi'
+import ReceiptIcon from '@mui/icons-material/Receipt'
+import { createCliente, deleteCliente, getCliente, importClientes, listClientes, updateCliente, updateVehiculo, agregarVehiculoCliente, quitarVehiculoCliente } from '../../services/clientesApi'
+import { createPago } from '../../services/cajaApi'
 import { usePaginatedData } from '../../hooks/usePaginatedData'
 import { useNotify } from '../../context/useNotify'
 import PageHeader from '../../components/PageHeader'
@@ -39,7 +47,8 @@ import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import VehiculoFormFields from '../../components/VehiculoFormFields'
 import { waLink } from '../../utils/wa'
-import { plural } from '../../utils/format'
+import { plural, fmtMoney, fmtDate, fmtDateTime, parseNumero } from '../../utils/format'
+import { ordenEstadoMeta, pagoMetodoMeta } from '../../utils/meta'
 
 const emptyCliente = { id: null, nombre: '', telefonos: [''], emails: [] }
 const emptyVehiculo = { id: null, marca: '', modelo: '', anio: '', patente: '', kilometros: '' }
@@ -56,6 +65,9 @@ export default function Clientes() {
   const [vehCliente, setVehCliente] = useState(null)
   const [deleteVehTarget, setDeleteVehTarget] = useState(null)
   const [deleteVehBusy, setDeleteVehBusy] = useState(false)
+  const [cobroTarget, setCobroTarget] = useState(null)
+  const [cobroForm, setCobroForm] = useState({ monto: '', metodo: 'efectivo', referencia: '' })
+  const [cobrando, setCobrando] = useState(false)
 
   const clientes = usePaginatedData(listClientes, { errorMessage: 'No se pudieron cargar los clientes.' })
   const filtered = clientes.rows
@@ -64,10 +76,21 @@ export default function Clientes() {
   // refresca con los datos nuevos (si no, queda con la foto vieja).
   const reloadAndSync = async (clienteId) => {
     const result = await clientes.reload()
-    if (clienteId && result?.data) {
-      const updated = result.data.find((c) => c.id === clienteId)
-      if (updated) setClienteModal((prev) => (prev?.cliente?.id === clienteId ? { ...prev, cliente: updated } : prev))
-      else clientes.onPageChange(null, 0)
+    if (!clienteId || !result?.data) return
+    const updated = result.data.find((c) => c.id === clienteId)
+    if (!updated) {
+      clientes.onPageChange(null, 0)
+      return
+    }
+    const modal = clienteModal
+    if (modal?.cliente?.id !== clienteId) return
+    if (modal.mode === 'ver') {
+      // En modo ver se muestra el historial completo: recarga el detalle.
+      setClienteModal((prev) => ({ ...prev, loading: true }))
+      const full = await getCliente(clienteId)
+      setClienteModal((prev) => (prev?.cliente?.id === clienteId ? { ...prev, cliente: full, full, loading: false } : prev))
+    } else {
+      setClienteModal((prev) => (prev?.cliente?.id === clienteId ? { ...prev, cliente: updated } : prev))
     }
   }
 
@@ -82,7 +105,12 @@ export default function Clientes() {
           }
         : emptyCliente
     )
-    setClienteModal({ cliente, mode })
+    setClienteModal({ cliente, mode, full: null, loading: mode === 'ver' })
+    if (mode === 'ver' && cliente) {
+      getCliente(cliente.id)
+        .then((full) => setClienteModal((prev) => (prev?.cliente?.id === cliente.id ? { ...prev, cliente: full, full, loading: false } : prev)))
+        .catch(() => setClienteModal((prev) => (prev?.cliente?.id === cliente.id ? { ...prev, loading: false } : prev)))
+    }
   }
 
   const addTelefono = () => setClienteForm((prev) => ({ ...prev, telefonos: [...prev.telefonos, ''] }))
@@ -108,7 +136,10 @@ export default function Clientes() {
         notify.success('Cliente actualizado.')
         // Refresca lista + datos del modal y vuelve al modo ver.
         await reloadAndSync(clienteForm.id)
-        setClienteModal((prev) => (prev ? { ...prev, mode: 'ver' } : prev))
+        setClienteModal((prev) => (prev ? { ...prev, mode: 'ver', loading: true } : prev))
+        getCliente(clienteForm.id)
+          .then((full) => setClienteModal((prev) => (prev?.cliente?.id === clienteForm.id ? { ...prev, cliente: full, full, loading: false } : prev)))
+          .catch(() => setClienteModal((prev) => (prev?.cliente?.id === clienteForm.id ? { ...prev, loading: false } : prev)))
       } else {
         await createCliente(payload)
         notify.success('Cliente creado.')
@@ -178,6 +209,40 @@ export default function Clientes() {
     }
   }
 
+  const openCobro = (orden) => {
+    setCobroTarget(orden)
+    setCobroForm({ monto: String(orden.saldo_pendiente ?? ''), metodo: 'efectivo', referencia: '' })
+  }
+
+  const confirmCobro = async () => {
+    const monto = parseNumero(cobroForm.monto)
+    if (Number.isNaN(monto) || monto <= 0) {
+      notify.error('Ingresá un monto válido.')
+      return
+    }
+    if (monto > cobroTarget.saldo_pendiente) {
+      notify.error('El monto supera el saldo pendiente.')
+      return
+    }
+    setCobrando(true)
+    try {
+      await createPago({ orden_id: cobroTarget.id, monto, metodo: cobroForm.metodo, referencia: cobroForm.referencia || null })
+      notify.success('Cobro registrado.')
+      setCobroTarget(null)
+      // Refresca la deuda en el listado y el historial del modal abierto.
+      const clienteId = clienteModal?.cliente?.id
+      await clientes.reload()
+      if (clienteId) {
+        const full = await getCliente(clienteId)
+        setClienteModal((prev) => (prev?.cliente?.id === clienteId ? { ...prev, cliente: full, full, loading: false } : prev))
+      }
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'No se pudo registrar el cobro.')
+    } finally {
+      setCobrando(false)
+    }
+  }
+
   const handleImport = async (rows) => {
     // Excel cells are flat strings — "telefonos"/"emails" columns may hold
     // several values separated by , or ; ; the backend splits them the same way.
@@ -193,6 +258,7 @@ export default function Clientes() {
     { header: 'Teléfonos', key: 'telefonos', render: (c) => (c.telefonos ?? []).map((t) => t.telefono).join('; ') },
     { header: 'Emails', key: 'emails', render: (c) => (c.emails ?? []).map((e) => e.email).join('; ') },
     { header: 'Vehículos', key: 'vehiculos', render: (c) => (c.vehiculos ?? []).map((v) => `${v.marca} ${v.modelo} (${v.patente})`).join(', ') },
+    { header: 'Deuda', key: 'saldo_total', render: (c) => fmtMoney(c.saldo_total) },
   ]
 
   return (
@@ -227,7 +293,7 @@ export default function Clientes() {
       </Stack>
 
       {clientes.loading ? (
-        <SkeletonTable columns={5} />
+        <SkeletonTable columns={6} />
       ) : filtered.length === 0 ? (
         <Paper variant="outlined">
           <EmptyState
@@ -247,6 +313,7 @@ export default function Clientes() {
                 <TableCell>Teléfonos</TableCell>
                 <TableCell>Emails</TableCell>
                 <TableCell align="center">Vehículos</TableCell>
+                <TableCell align="right">Deuda</TableCell>
                 <TableCell align="right">Acciones</TableCell>
               </TableRow>
             </TableHead>
@@ -290,7 +357,7 @@ export default function Clientes() {
         actions={
           clienteModal?.mode === 'editar' ? (
             <>
-              <Button onClick={() => (clienteModal?.cliente ? setClienteModal((prev) => ({ ...prev, mode: 'ver' })) : setClienteModal(null))}>Cancelar</Button>
+              <Button onClick={() => (clienteModal?.cliente ? openCliente(clienteModal.cliente, 'ver') : setClienteModal(null))}>Cancelar</Button>
               <Button type="submit" form="cliente-form" variant="contained">
                 {clienteForm.id ? 'Guardar' : 'Crear'}
               </Button>
@@ -357,12 +424,14 @@ export default function Clientes() {
         ) : (
           clienteModal?.cliente && (
             <DetailCliente
-              cliente={clienteModal.cliente}
+              cliente={clienteModal.full ?? clienteModal.cliente}
+              loading={clienteModal.loading}
               onEdit={() => setClienteModal((prev) => ({ ...prev, mode: 'editar' }))}
               onDelete={() => setDeleteClienteTarget(clienteModal.cliente)}
               onAddVeh={() => openVehiculo(clienteModal.cliente)}
               onEditVeh={(veh) => openVehiculo(clienteModal.cliente, veh)}
               onDeleteVeh={(veh) => setDeleteVehTarget({ cliente: clienteModal.cliente, veh })}
+              onCobrar={openCobro}
             />
           )
         )}
@@ -391,6 +460,75 @@ export default function Clientes() {
         <Box component="form" id="vehiculo-form" onSubmit={handleVehSubmit}>
           <VehiculoFormFields form={vehForm} setForm={setVehForm} autoFocus />
         </Box>
+      </AppDialog>
+
+      <AppDialog
+        open={Boolean(cobroTarget)}
+        onClose={() => setCobroTarget(null)}
+        title={`Cobrar orden #${cobroTarget?.id}`}
+        subtitle="Registrá el pago de la orden."
+        icon={<ReceiptIcon />}
+        iconBg="success.main"
+        maxWidth="xs"
+        actions={
+          <>
+            <Button onClick={() => setCobroTarget(null)} disabled={cobrando}>Cancelar</Button>
+            <Button onClick={confirmCobro} variant="contained" color="success" disabled={cobrando}>
+              {cobrando ? 'Registrando…' : 'Registrar cobro'}
+            </Button>
+          </>
+        }
+      >
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+            {[
+              { label: 'Total', value: fmtMoney(cobroTarget?.total), color: 'text.primary' },
+              { label: 'Pagado', value: fmtMoney(cobroTarget?.total_pagado), color: 'success.main' },
+              { label: 'Saldo', value: fmtMoney(cobroTarget?.saldo_pendiente), color: 'error.main' },
+            ].map((cell) => (
+              <Box key={cell.label} sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', textAlign: 'center' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  {cell.label}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: cell.color }}>
+                  {cell.value}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+          <TextField
+            label="Monto"
+            name="monto"
+            type="number"
+            value={cobroForm.monto}
+            onChange={(e) => setCobroForm((prev) => ({ ...prev, monto: e.target.value }))}
+            fullWidth
+            slotProps={{ htmlInput: { min: 0 } }}
+            autoFocus
+          />
+          <TextField select label="Método" name="metodo" value={cobroForm.metodo} onChange={(e) => setCobroForm((prev) => ({ ...prev, metodo: e.target.value }))} fullWidth>
+            {Object.entries(pagoMetodoMeta).map(([metodo, meta]) => (
+              <MenuItem key={metodo} value={metodo}>
+                {meta.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField label="Referencia (opcional)" name="referencia" value={cobroForm.referencia} onChange={(e) => setCobroForm((prev) => ({ ...prev, referencia: e.target.value }))} fullWidth />
+          {(cobroTarget?.pagos?.length ?? 0) > 0 && (
+            <Box>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                Pagos previos
+              </Typography>
+              <List dense disablePadding>
+                {(cobroTarget?.pagos ?? []).map((pago) => (
+                  <ListItem key={pago.id} disableGutters>
+                    <ListItemText primary={`${pagoMetodoMeta[pago.metodo]?.label ?? pago.metodo} — ${fmtMoney(pago.monto)}`} secondary={pago.referencia || fmtDateTime(pago.fecha)} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </Stack>
       </AppDialog>
 
       <ConfirmDialog
@@ -470,6 +608,15 @@ function ClienteRow({ cliente, onView, onEdit, onDelete }) {
       <TableCell align="center">
         <Chip size="small" label={vehiculos.length} icon={<DirectionsCarIcon />} variant="outlined" />
       </TableCell>
+      <TableCell align="right">
+        <Chip
+          size="small"
+          label={fmtMoney(cliente.saldo_total)}
+          color={cliente.saldo_total > 0 ? 'error' : 'success'}
+          variant={cliente.saldo_total > 0 ? 'filled' : 'outlined'}
+          sx={{ fontWeight: 700 }}
+        />
+      </TableCell>
       <TableCell align="right" onClick={(e) => e.stopPropagation()}>
         <IconButton size="small" onClick={onView} aria-label="Ver">
           <VisibilityIcon fontSize="small" />
@@ -485,10 +632,53 @@ function ClienteRow({ cliente, onView, onEdit, onDelete }) {
   )
 }
 
-function DetailCliente({ cliente, onEdit, onDelete, onAddVeh, onEditVeh, onDeleteVeh }) {
+function DetailCliente({ cliente, loading, onEdit, onDelete, onAddVeh, onEditVeh, onDeleteVeh, onCobrar }) {
   const vehiculos = cliente.vehiculos ?? []
+  const deuda = Number(cliente.saldo_total ?? 0)
+  const ordenesTotales = vehiculos.reduce((acc, v) => acc + (v.ordenesTrabajo?.length ?? 0), 0)
   return (
     <>
+      <Box
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: deuda > 0 ? 'error.main' : 'success.main',
+          bgcolor: (t) => (deuda > 0 ? alpha(t.palette.error.main, 0.08) : alpha(t.palette.success.main, 0.06)),
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}
+      >
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: deuda > 0 ? 'error.main' : 'success.main',
+            color: '#fff',
+            flexShrink: 0,
+          }}
+        >
+          <ReceiptIcon fontSize="small" />
+        </Box>
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Deuda total
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: deuda > 0 ? 'error.main' : 'success.main' }}>
+            {fmtMoney(deuda)}
+          </Typography>
+        </Box>
+        {deuda > 0 && (
+          <Chip size="small" color="error" label={`${ordenesTotales} ${plural(ordenesTotales, 'orden')}`} />
+        )}
+      </Box>
+
       <Stack spacing={1.5} sx={{ mb: 3 }}>
         <Box>
           <Typography variant="caption" color="text.secondary">
@@ -554,7 +744,7 @@ function DetailCliente({ cliente, onEdit, onDelete, onAddVeh, onEditVeh, onDelet
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
         <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <DirectionsCarIcon fontSize="small" color="primary" />
-          Vehículos
+          Vehículos y deudas
         </Typography>
         <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onAddVeh}>
           Agregar
@@ -565,33 +755,90 @@ function DetailCliente({ cliente, onEdit, onDelete, onAddVeh, onEditVeh, onDelet
           Este cliente todavía no tiene vehículos cargados.
         </Typography>
       ) : (
-        <Stack spacing={1}>
-          {vehiculos.map((veh) => (
-            <Paper key={veh.id} variant="outlined" sx={{ p: 1.25 }}>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {veh.marca} {veh.modelo}
-                    {veh.anio ? ` · ${veh.anio}` : ''}
-                  </Typography>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.25 }}>
-                    <Chip size="small" label={veh.patente} variant="outlined" />
-                    <Typography variant="caption" color="text.secondary">
-                      {veh.kilometros ? `${Number(veh.kilometros).toLocaleString('es-AR')} km` : 'Sin km cargado'}
+        <Stack spacing={1.5}>
+          {vehiculos.map((veh) => {
+            const ordenes = veh.ordenesTrabajo ?? []
+            const saldoVeh = ordenes.reduce((acc, o) => acc + Number(o.saldo_pendiente ?? 0), 0)
+            return (
+              <Paper key={veh.id} variant="outlined" sx={{ p: 1.5 }}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: ordenes.length ? 1 : 0 }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {veh.marca} {veh.modelo}
+                      {veh.anio ? ` · ${veh.anio}` : ''}
                     </Typography>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.25 }}>
+                      <Chip size="small" label={veh.patente} variant="outlined" />
+                      <Typography variant="caption" color="text.secondary">
+                        {veh.kilometros ? `${Number(veh.kilometros).toLocaleString('es-AR')} km` : 'Sin km cargado'}
+                      </Typography>
+                    </Stack>
+                  </Box>
+                  <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+                    {ordenes.length > 0 && (
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: saldoVeh > 0 ? 'error.main' : 'success.main' }}>
+                        Saldo: {fmtMoney(saldoVeh)}
+                      </Typography>
+                    )}
+                    <IconButton size="small" onClick={() => onEditVeh(veh)} aria-label="Editar vehículo">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => onDeleteVeh(veh)} aria-label="Eliminar vehículo">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
                   </Stack>
-                </Box>
-                <Box>
-                  <IconButton size="small" onClick={() => onEditVeh(veh)} aria-label="Editar vehículo">
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" color="error" onClick={() => onDeleteVeh(veh)} aria-label="Eliminar vehículo">
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              </Stack>
-            </Paper>
-          ))}
+                </Stack>
+
+                {loading && ordenes.length === 0 && (
+                  <Stack spacing={1} sx={{ mt: 1 }}>
+                    <Skeleton variant="rounded" height={40} />
+                    <Skeleton variant="rounded" height={40} />
+                  </Stack>
+                )}
+                {!loading && ordenes.length === 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Sin órdenes para este auto.
+                  </Typography>
+                )}
+                {ordenes.length > 0 && (
+                  <Stack spacing={0.75}>
+                    {ordenes.map((orden) => {
+                      const meta = ordenEstadoMeta[orden.estado] ?? { label: orden.estado, color: 'default' }
+                      const saldo = Number(orden.saldo_pendiente ?? 0)
+                      return (
+                        <Box key={orden.id} sx={{ p: 1, borderRadius: 1.5, border: '1px dashed', borderColor: 'divider', bgcolor: 'background.default' }}>
+                          <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', gap: 0.5, alignItems: { sm: 'center' } }}>
+                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                                #{orden.id}
+                              </Typography>
+                              <Chip size="small" label={meta.label} color={meta.color} sx={{ height: 18, fontSize: 10 }} />
+                              <Typography variant="caption" color="text.secondary">
+                                {fmtDate(orden.fecha_inicio ?? orden.fecha_fin)}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Total {fmtMoney(orden.total)} · Pagado {fmtMoney(orden.total_pagado)} ·{' '}
+                                <Box component="span" sx={{ fontWeight: 800, color: saldo > 0 ? 'error.main' : 'success.main' }}>
+                                  Saldo {fmtMoney(saldo)}
+                                </Box>
+                              </Typography>
+                              {saldo > 0 && (
+                                <Button size="small" variant="contained" color="success" startIcon={<ReceiptIcon />} onClick={() => onCobrar(orden)} sx={{ height: 26, fontSize: 11, px: 1 }}>
+                                  Cobrar
+                                </Button>
+                              )}
+                            </Stack>
+                          </Stack>
+                        </Box>
+                      )
+                    })}
+                  </Stack>
+                )}
+              </Paper>
+            )
+          })}
         </Stack>
       )}
     </>

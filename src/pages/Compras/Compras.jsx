@@ -4,6 +4,7 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import PrintIcon from '@mui/icons-material/Print'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import { createCompra, deleteCompra, importCompras, listCompras, listProveedoresOptions, listRepuestosOptions, updateCompra } from '../../services/stockApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
@@ -18,6 +19,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import ExportExcelButton from '../../components/ExportExcelButton'
 import Pagination from '../../components/Pagination'
 import ImportExcelButton from '../../components/ImportExcelButton'
+import TicketDialog from '../../components/TicketDialog'
 import { compraEstadoMeta } from '../../utils/meta'
 import { fmtMoney, fmtDate, parseNumero, plural } from '../../utils/format'
 
@@ -29,6 +31,7 @@ export default function Compras() {
   const [form, setForm] = useState(emptyCompra)
   const [open, setOpen] = useState(false)
   const [detail, setDetail] = useState(null)
+  const [ticket, setTicket] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -197,6 +200,23 @@ export default function Compras() {
 
   const totalDetail = (detail?.items ?? []).reduce((acc, item) => acc + subtotalItem(item), 0)
 
+  const buildCompraTicket = (compra) => ({
+    titulo: 'Compra',
+    numero: compra.id,
+    fecha: fmtDate(compra.fecha),
+    meta: [
+      { label: 'Proveedor', value: provById[compra.proveedor_id]?.nombre ?? '—' },
+      { label: 'Estado de pago', value: compraEstadoMeta[compra.estado_pago]?.label ?? compra.estado_pago },
+    ],
+    items: (compra.items ?? []).map((item) => ({
+      descripcion: repById[item.repuesto_id]?.nombre ?? item.descripcion ?? '—',
+      detalle: `${item.cantidad} × ${fmtMoney(item.precio)}`,
+      subtotal: fmtMoney(subtotalItem(item)),
+    })),
+    totales: [{ label: 'Total', value: fmtMoney(compra.importe ?? totalDetail) }],
+    notas: [],
+  })
+
   const columns = [
     { header: 'Repuesto', key: 'repuesto', render: (i) => repById[i.repuesto_id]?.nombre ?? i.descripcion ?? '—' },
     { header: 'Cantidad', key: 'cantidad' },
@@ -290,6 +310,9 @@ export default function Compras() {
                     <Chip size="small" label={compraEstadoMeta[compra.estado_pago]?.label ?? compra.estado_pago} color={compraEstadoMeta[compra.estado_pago]?.color ?? 'default'} />
                   </TableCell>
                   <TableCell align="right">
+                    <IconButton size="small" onClick={() => setTicket(buildCompraTicket(compra))} aria-label="Imprimir ticket">
+                      <PrintIcon fontSize="small" />
+                    </IconButton>
                     <IconButton size="small" onClick={() => setDetail(compra)} aria-label="Ver detalle">
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
@@ -411,7 +434,14 @@ export default function Compras() {
         subtitle="Detalle de la compra."
         icon={<VisibilityIcon />}
         iconBg="primary.main"
-        actions={<Button onClick={() => setDetail(null)}>Cerrar</Button>}
+        actions={
+          <>
+            <Button onClick={() => setDetail(null)}>Cerrar</Button>
+            <Button variant="contained" startIcon={<PrintIcon />} onClick={() => detail && setTicket(buildCompraTicket(detail))}>
+              Imprimir ticket
+            </Button>
+          </>
+        }
       >
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 1.5 }}>
@@ -489,6 +519,8 @@ export default function Compras() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />
+
+      <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
     </Box>
   )
 }

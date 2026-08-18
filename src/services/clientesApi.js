@@ -17,6 +17,13 @@ export async function createCliente(payload) {
   return response.data
 }
 
+// Detalle completo: incluye el historial de órdenes de cada vehículo del
+// cliente (con items y pagos) para mostrar saldos y deudas.
+export async function getCliente(id) {
+  const response = await axiosClient.get(`/clientes/${id}`)
+  return response.data
+}
+
 export async function updateCliente(id, payload) {
   const response = await axiosClient.put(`/clientes/${id}`, payload)
   return response.data
