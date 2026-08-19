@@ -483,7 +483,16 @@ export default function Ordenes() {
         </Paper>
       ) : (
         <>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, alignItems: 'start' }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gap: 2,
+              alignItems: 'stretch',
+              height: 'calc(100svh - 280px)',
+              minHeight: 420,
+            }}
+          >
             {boardColumns.map((col) => {
             const meta = ordenEstadoMeta[col.key]
             const ColIcon = col.icon
@@ -500,9 +509,13 @@ export default function Ordenes() {
                   pb: 2,
                   px: 1.25,
                   minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
+                  overflow: 'hidden',
                 }}
               >
-                <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 1.25, px: 0.5, pt: 0.25 }}>
+                <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 1.25, px: 0.5, pt: 0.25, flexShrink: 0 }}>
                   <Box sx={{ width: 26, height: 26, borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: `${meta.color}.main`, color: '#fff', flexShrink: 0 }}>
                     <ColIcon sx={{ fontSize: 15 }} />
                   </Box>
@@ -512,7 +525,7 @@ export default function Ordenes() {
                   <Chip size="small" label={items.length} sx={{ fontWeight: 800, minWidth: 30 }} />
                 </Stack>
 
-                <Stack spacing={1.25} sx={{ maxHeight: 640, overflowY: 'auto', px: 0.5, pt: 0.5, pb: 1.5 }}>
+                <Stack spacing={1.25} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 0.5, pt: 0.5, pb: 1.5 }}>
                   {items.map((orden) => {
                     const veh = vehById[orden.vehiculo_id]
                     const clienteWa = clienteWaDe(orden, veh)
@@ -528,6 +541,7 @@ export default function Ordenes() {
                         onClick={() => openDetail(orden)}
                         sx={{
                           cursor: 'pointer',
+                          flexShrink: 0,
                           borderLeft: '3px solid',
                           borderLeftColor: `${meta.color}.main`,
                           transition: 'transform 0.15s ease, box-shadow 0.2s ease',
@@ -573,21 +587,23 @@ export default function Ordenes() {
                           <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
                             {fmtVehiculo(veh) || '—'}
                           </Typography>
-                          <Stack spacing={0.15} sx={{ mb: 1, mt: 0.25 }}>
-                            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                              <EventIcon sx={{ fontSize: 13, color: 'text.secondary', flexShrink: 0 }} />
-                              <Typography variant="caption" color="text.secondary" noWrap>
-                                {fmtDateTimeShort(orden.created_at)}
-                              </Typography>
+                          <Box sx={{ mt: 1, mb: 1.25, p: 1, borderRadius: 1.5, border: '1px dashed', borderColor: 'divider', bgcolor: 'background.default' }}>
+                            <Stack spacing={0.4}>
+                              <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                                <EventIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
+                                <Typography variant="caption" color="text.secondary" noWrap sx={{ fontWeight: 600 }}>
+                                  {fmtDateTimeShort(orden.created_at)}
+                                </Typography>
+                              </Stack>
+                              {(orden.fecha_inicio || orden.fecha_fin) && (
+                                <Typography variant="caption" color="text.secondary" noWrap sx={{ pl: 2.75 }}>
+                                  {orden.fecha_inicio && `Inicio ${fmtDateTimeShort(orden.fecha_inicio)}`}
+                                  {orden.fecha_inicio && orden.fecha_fin && ' · '}
+                                  {orden.fecha_fin && `Fin ${fmtDateTimeShort(orden.fecha_fin)}`}
+                                </Typography>
+                              )}
                             </Stack>
-                            {(orden.fecha_inicio || orden.fecha_fin) && (
-                              <Typography variant="caption" color="text.secondary" noWrap sx={{ pl: 2.5 }}>
-                                {orden.fecha_inicio && `Inicio ${fmtDateTimeShort(orden.fecha_inicio)}`}
-                                {orden.fecha_inicio && orden.fecha_fin && ' · '}
-                                {orden.fecha_fin && `Fin ${fmtDateTimeShort(orden.fecha_fin)}`}
-                              </Typography>
-                            )}
-                          </Stack>
+                          </Box>
 
                           <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                             {orden.asignado ? (
