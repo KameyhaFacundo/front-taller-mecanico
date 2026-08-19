@@ -13,12 +13,14 @@ const Users = lazy(() => import('./pages/Users/Users'))
 const Clientes = lazy(() => import('./pages/Clientes/Clientes'))
 const Turnos = lazy(() => import('./pages/Turnos/Turnos'))
 const Ordenes = lazy(() => import('./pages/Ordenes/Ordenes'))
+const Presupuestos = lazy(() => import('./pages/Presupuestos/Presupuestos'))
 const Caja = lazy(() => import('./pages/Caja/Caja'))
 const Repuestos = lazy(() => import('./pages/Repuestos/Repuestos'))
 const Compras = lazy(() => import('./pages/Compras/Compras'))
 const Vehiculos = lazy(() => import('./pages/Vehiculos/Vehiculos'))
 const Proveedores = lazy(() => import('./pages/Proveedores/Proveedores'))
 const Servicios = lazy(() => import('./pages/Servicios/Servicios'))
+const Configuracion = lazy(() => import('./pages/Configuracion/Configuracion'))
 
 function PageFallback() {
   return (
@@ -41,12 +43,14 @@ export default function App() {
           <Route path="/vehiculos" element={<Vehiculos />} />
           <Route path="/turnos" element={<Turnos />} />
           <Route path="/ordenes" element={<Ordenes />} />
+          <Route path="/presupuestos" element={<Presupuestos />} />
           <Route path="/caja" element={<Caja />} />
           <Route path="/productos" element={<Repuestos />} />
           <Route path="/stock" element={<Navigate to="/productos" replace />} />
           <Route path="/compras" element={<Compras />} />
           <Route path="/proveedores" element={<Proveedores />} />
           <Route path="/servicios" element={<Servicios />} />
+          <Route path="/configuracion" element={<Configuracion />} />
           <Route path="/forbidden" element={<Forbidden />} />
           <Route element={<RequireAdmin />}>
             <Route path="/users" element={<Users />} />

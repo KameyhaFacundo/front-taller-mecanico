@@ -17,11 +17,9 @@ import SearchInput from '../../components/SearchInput'
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import Pagination from '../../components/Pagination'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import TicketDialog from '../../components/TicketDialog'
-import RowActionsMenu from '../../components/RowActionsMenu'
 import { compraEstadoMeta } from '../../utils/meta'
 import { fmtMoney, fmtDate, parseNumero, plural } from '../../utils/format'
 
@@ -235,14 +233,6 @@ export default function Compras() {
     notas: [],
   })
 
-  const columns = [
-    { header: 'Producto', key: 'repuesto', render: (i) => repById[i.repuesto_id]?.nombre ?? i.descripcion ?? '—' },
-    { header: 'Cantidad', key: 'cantidad' },
-    { header: 'Precio', key: 'precio', render: (i) => fmtMoney(i.precio) },
-    { header: 'Proveedor', key: 'proveedor' },
-    { header: 'Fecha', key: 'fecha' },
-    { header: 'Estado', key: 'estado_pago' },
-  ]
 
   return (
     <Box>
@@ -251,17 +241,6 @@ export default function Compras() {
         subtitle="Compras a proveedores. Cada compra aumenta el stock automáticamente."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="compras"
-              sheetName="Compras"
-              columns={columns}
-              rowsFetcher={async () => {
-                const compras = (await listCompras({ q: compras.q, per_page: 5000 })).data
-                return compras.flatMap((c) =>
-                  (c.items ?? []).map((i) => ({ ...i, proveedor: provById[c.proveedor_id]?.nombre ?? '', fecha: c.fecha, estado_pago: c.estado_pago }))
-                )
-              }}
-            />
             <ImportExcelButton onImport={handleImport} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nueva compra
@@ -281,7 +260,7 @@ export default function Compras() {
       </Stack>
 
       {compras.loading ? (
-        <SkeletonTable columns={6} />
+        <SkeletonTable columns={7} />
       ) : filtered.length === 0 ? (
         <Paper variant="outlined">
           <EmptyState
@@ -297,12 +276,13 @@ export default function Compras() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ width: 60 }}>N°</TableCell>
-                <TableCell>Fecha</TableCell>
+                <TableCell sx={{ width: 70 }}>N°</TableCell>
+                <TableCell sx={{ width: 110 }}>Fecha</TableCell>
                 <TableCell>Proveedor</TableCell>
-                <TableCell align="right">Importe</TableCell>
-                <TableCell>Estado</TableCell>
-                <TableCell align="right">Acciones</TableCell>
+                <TableCell align="right" sx={{ width: 90 }}>Items</TableCell>
+                <TableCell align="right" sx={{ width: 140 }}>Importe</TableCell>
+                <TableCell sx={{ width: 130 }}>Estado</TableCell>
+                <TableCell align="center" sx={{ width: 170 }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -319,7 +299,8 @@ export default function Compras() {
                       {provById[compra.proveedor_id]?.nombre ?? '—'}
                     </Typography>
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right">{plural(compra.items?.length ?? 0, 'item')}</TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                     <Typography variant="body2" sx={{ fontWeight: 800 }}>
                       {fmtMoney(compra.importe)}
                     </Typography>
@@ -327,18 +308,19 @@ export default function Compras() {
                   <TableCell>
                     <Chip size="small" label={compraEstadoMeta[compra.estado_pago]?.label ?? compra.estado_pago} color={compraEstadoMeta[compra.estado_pago]?.color ?? 'default'} />
                   </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => setTicket(buildCompraTicket(compra))} aria-label="Imprimir ticket">
+                  <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                    <IconButton size="small" onClick={() => setDetail(compra)} aria-label="Ver detalle" title="Ver detalle">
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => setTicket(buildCompraTicket(compra))} aria-label="Imprimir ticket" title="Imprimir">
                       <PrintIcon fontSize="small" />
                     </IconButton>
-                    <RowActionsMenu
-                      items={[
-                        { label: 'Ver detalle', icon: <VisibilityIcon fontSize="small" />, onClick: () => setDetail(compra) },
-                        { label: 'Editar', icon: <EditIcon fontSize="small" />, onClick: () => openForm(compra) },
-                        { divider: true },
-                        { label: 'Eliminar', icon: <DeleteIcon fontSize="small" />, onClick: () => setDeleteTarget(compra), color: 'error' },
-                      ]}
-                    />
+                    <IconButton size="small" onClick={() => openForm(compra)} aria-label="Editar compra" title="Editar">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(compra)} aria-label="Eliminar compra" title="Eliminar">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}

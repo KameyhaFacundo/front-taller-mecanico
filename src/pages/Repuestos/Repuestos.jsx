@@ -15,7 +15,6 @@ import SearchInput from '../../components/SearchInput'
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import Pagination from '../../components/Pagination'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import { fmtMoney, parseNumero, plural } from '../../utils/format'
@@ -169,14 +168,6 @@ export default function Repuestos() {
     reloadAll()
   }
 
-  const columns = [
-    { header: 'Producto', key: 'nombre' },
-    { header: 'Proveedor', key: 'proveedor_id', render: (r) => proveedorById[r.proveedor_id]?.nombre ?? '' },
-    { header: 'Stock actual', key: 'stock_actual' },
-    { header: 'Stock mínimo', key: 'stock_minimo' },
-    { header: 'Precio costo', key: 'precio_costo' },
-    { header: 'Precio venta', key: 'precio_venta' },
-  ]
 
   return (
     <Box>
@@ -185,12 +176,6 @@ export default function Repuestos() {
         subtitle="Inventario de productos con control de stock mínimo."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="productos"
-              sheetName="Productos"
-              columns={columns}
-              rowsFetcher={async () => (await listRepuestos({ q: repuestos.q, per_page: 5000 })).data}
-            />
             <ImportExcelButton onImport={handleImport} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nuevo producto
@@ -244,7 +229,7 @@ export default function Repuestos() {
                 <TableCell align="center">Mínimo</TableCell>
                 <TableCell align="right">Precio costo</TableCell>
                 <TableCell align="right">Precio venta</TableCell>
-                <TableCell align="right">Acciones</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -264,7 +249,7 @@ export default function Repuestos() {
                     </TableCell>
                     <TableCell align="right">{r.precio_costo != null ? fmtMoney(r.precio_costo) : '—'}</TableCell>
                     <TableCell align="right">{r.precio_venta != null ? fmtMoney(r.precio_venta) : '—'}</TableCell>
-                    <TableCell align="right">
+                    <TableCell align="center">
                       <Tooltip title="Editar">
                         <IconButton size="small" onClick={() => openForm(r)} aria-label="Editar">
                           <EditIcon fontSize="small" />

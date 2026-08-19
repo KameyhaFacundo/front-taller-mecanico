@@ -21,10 +21,10 @@ export default function GestionarModelosDialog({ open, onClose, onChanged }) {
   const handleAdd = async (event) => {
     event.preventDefault()
     const v = nombre.trim()
-    if (!v || busy) return
+    if (!v || !marcaId || busy) return
     setBusy(true)
     try {
-      await createModelo(v, marcaId || null)
+      await createModelo(v, marcaId)
       notify.success('Modelo agregado.')
       setNombre('')
       setMarcaId('')
@@ -65,24 +65,30 @@ export default function GestionarModelosDialog({ open, onClose, onChanged }) {
       actions={<Button onClick={onClose}>Cerrar</Button>}
     >
       <Box component="form" onSubmit={handleAdd} sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-        <TextField label="Nuevo modelo" value={nombre} onChange={(e) => setNombre(e.target.value)} fullWidth autoFocus />
         <TextField
           select
-          label="Marca (opcional)"
+          label="Marca"
           value={marcaId}
           onChange={(e) => setMarcaId(e.target.value)}
+          required
+          autoFocus
           sx={{ minWidth: 180 }}
         >
-          <MenuItem value="">
-            <em>Sin marca</em>
-          </MenuItem>
           {(marcas.data ?? []).map((m) => (
             <MenuItem key={m.id} value={m.id}>
               {m.nombre}
             </MenuItem>
           ))}
         </TextField>
-        <Button type="submit" variant="contained" disabled={busy || !nombre.trim()} sx={{ alignSelf: 'flex-start' }}>
+        <TextField
+          label="Nuevo modelo"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          disabled={!marcaId}
+          helperText={!marcaId ? 'Elegí una marca primero' : ' '}
+          fullWidth
+        />
+        <Button type="submit" variant="contained" disabled={busy || !nombre.trim() || !marcaId} sx={{ alignSelf: 'flex-start' }}>
           Agregar
         </Button>
       </Box>

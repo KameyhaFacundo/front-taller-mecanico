@@ -29,7 +29,6 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import MapIcon from '@mui/icons-material/Map'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { useAuth } from '../../hooks/useAuth'
 import { useColorMode } from '../../context/useColorMode'
 import { waLinkTaller } from '../../utils/wa'
@@ -38,7 +37,7 @@ import PublicFooter from '../../components/public/PublicFooter'
 import WhatsAppFloat from '../../components/public/WhatsAppFloat'
 import Reveal from '../../components/Reveal'
 
-const DIRECCION = 'Av. San Martín 1234, San Miguel de Tucumán, Tucumán'
+const DIRECCION = 'Ruta 321 Km 7, El Naranjo, Tucumán'
 const MAPS_QUERY = encodeURIComponent(DIRECCION)
 const MAPS_EMBED = `https://maps.google.com/maps?q=${MAPS_QUERY}&t=&z=15&ie=UTF8&iwloc=&output=embed`
 const MAPS_LINK = `https://www.google.com/maps/search/?api=1&query=${MAPS_QUERY}`
@@ -47,9 +46,8 @@ const NAV_LINKS = [
   { label: 'Servicios', id: 'servicios' },
   { label: 'Cómo funciona', id: 'como-funciona' },
   { label: 'Trabajos', id: 'trabajos' },
-  { label: 'Precios', id: 'precios' },
   { label: 'Preguntas', id: 'faq' },
-  { label: 'Contacto', id: 'contacto' },
+  { label: 'Contacto', id: 'ubicacion' },
 ]
 
 const servicios = [
@@ -82,30 +80,6 @@ const trabajos = [
   { icon: AutoFixHighIcon, titulo: 'Cubierta nueva', detalle: 'Zanella ZB 110' },
   { icon: TroubleshootIcon, titulo: 'Electrónica y arranque', detalle: 'Gilera Smash' },
   { icon: BuildIcon, titulo: 'Rectificación de motor', detalle: 'Corven 150' },
-]
-
-const precios = [
-  {
-    titulo: 'Service de moto',
-    precio: 'desde $25.000',
-    descripcion: 'Mantenimiento periódico ideal para cuidar tu motor.',
-    items: ['Aceite y filtro incluidos', 'Ajuste de cadena', 'Control general de luces y frenos'],
-    destacado: false,
-  },
-  {
-    titulo: 'Kit de arrastre',
-    precio: 'desde $35.000',
-    descripcion: 'Cadena, piñón y corona nuevos, listos para andar.',
-    items: ['Cadena, piñón y corona', 'Montaje y ajuste', 'Lubricación incluida'],
-    destacado: true,
-  },
-  {
-    titulo: 'Cubierta + cámara',
-    precio: 'desde $45.000',
-    descripcion: 'Neumático nuevo montado y en condiciones para la calle.',
-    items: ['Montaje de cubierta', 'Cámara nueva', 'Balanceo incluido'],
-    destacado: false,
-  },
 ]
 
 const preguntas = [
@@ -180,8 +154,8 @@ export default function Landing() {
           position: 'relative',
           overflow: 'hidden',
           background: dark
-            ? 'radial-gradient(1000px 500px at 85% -10%, rgba(242,116,5,0.22), transparent 60%), radial-gradient(800px 420px at 0% 110%, rgba(14,124,102,0.26), transparent 60%), #0b1513'
-            : 'radial-gradient(1000px 500px at 85% -10%, rgba(242,116,5,0.12), transparent 60%), radial-gradient(800px 420px at 0% 110%, rgba(14,124,102,0.12), transparent 60%), #ffffff',
+            ? 'radial-gradient(1000px 500px at 85% -10%, rgba(100,116,139,0.22), transparent 60%), radial-gradient(800px 420px at 0% 110%, rgba(95,143,255,0.26), transparent 60%), #070c17'
+            : 'radial-gradient(1000px 500px at 85% -10%, rgba(100,116,139,0.14), transparent 60%), radial-gradient(800px 420px at 0% 110%, rgba(22,86,209,0.12), transparent 60%), #ffffff',
         }}
       >
         <Container maxWidth="lg" sx={{ py: { xs: 8, md: 12 }, textAlign: { xs: 'center', md: 'left' } }}>
@@ -251,7 +225,7 @@ export default function Landing() {
                   sx={{
                     p: 2.5,
                     textAlign: 'center',
-                    bgcolor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(14,124,102,0.05)',
+                    bgcolor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(22,86,209,0.05)',
                     border: dark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(22,32,46,0.10)',
                     borderRadius: 3,
                     backdropFilter: dark ? 'blur(6px)' : 'none',
@@ -363,64 +337,6 @@ export default function Landing() {
                   </Box>
                   <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{t.titulo}</Typography>
                   <Typography variant="body2" color="text.secondary">{t.detalle}</Typography>
-                </Paper>
-              </Reveal>
-            ))}
-          </Box>
-        </Container>
-      </Box>
-
-      {/* PRECIOS */}
-      <Box id="precios" sx={{ bgcolor: 'background.paper', borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', ...seccionSx }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
-          <Reveal>
-            <SeccionTitulo overline="Precios" titulo="Valores orientativos" texto="Presupuesto cerrado y sin cargos ocultos. El precio final se confirma al revisar tu moto." />
-          </Reveal>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2.5, alignItems: 'stretch' }}>
-            {precios.map((p, i) => (
-              <Reveal key={p.titulo} delay={i * 90}>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 3.5,
-                    borderRadius: 3,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    ...(p.destacado
-                      ? { border: '2px solid', borderColor: 'primary.main', boxShadow: (t) => t.custom.shadowHover }
-                      : {}),
-                  }}
-                >
-                  {p.destacado && (
-                    <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: (t) => t.custom.brandGradient }} />
-                  )}
-                  {p.destacado && (
-                    <Chip label="Más pedido" size="small" color="primary" sx={{ position: 'absolute', top: 16, right: 16, fontWeight: 700 }} />
-                  )}
-                  <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700 }}>{p.titulo}</Typography>
-                  <Typography sx={{ fontSize: '1.7rem', fontWeight: 800, letterSpacing: '-0.02em', my: 1 }}>{p.precio}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{p.descripcion}</Typography>
-                  <Stack spacing={1} sx={{ mb: 3, flex: 1 }}>
-                    {p.items.map((item) => (
-                      <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <CheckCircleIcon sx={{ fontSize: 17, color: 'primary.main' }} />
-                        <Typography variant="body2">{item}</Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                  <Button
-                    component={RouterLink}
-                    to="/agendar"
-                    variant={p.destacado ? 'contained' : 'outlined'}
-                    color={p.destacado ? 'primary' : 'inherit'}
-                    endIcon={<ArrowForwardIcon />}
-                    sx={{ color: p.destacado ? undefined : 'text.primary' }}
-                  >
-                    Reservar este trabajo
-                  </Button>
                 </Paper>
               </Reveal>
             ))}
@@ -540,7 +456,7 @@ export default function Landing() {
               Reservá tu turno online o escribinos por WhatsApp. Te respondemos rápido.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'center' }}>
-              <Button component={RouterLink} to="/agendar" variant="contained" size="large" startIcon={<CalendarMonthIcon />} sx={{ bgcolor: '#fff', color: '#0b1513', fontSize: '0.95rem', px: 3.5, '&:hover': { bgcolor: '#f0f0f0' } }}>
+              <Button component={RouterLink} to="/agendar" variant="contained" size="large" startIcon={<CalendarMonthIcon />} sx={{ bgcolor: '#fff', color: '#070c17', fontSize: '0.95rem', px: 3.5, '&:hover': { bgcolor: '#f0f0f0' } }}>
                 Reservá tu turno
               </Button>
               {wa && (

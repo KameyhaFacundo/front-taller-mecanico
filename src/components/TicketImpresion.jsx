@@ -13,7 +13,7 @@ export default function TicketImpresion({ titulo, numero, fecha, meta = [], item
     <Box id="ticket-print" sx={{ bgcolor: '#fff', color: '#111', fontFamily: 'Inter, sans-serif' }}>
       <Box sx={{ textAlign: 'center', mb: 1.5 }}>
         <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-          Exe-Mecanica
+          Impulsa Motors
         </Typography>
         <Typography variant="caption" sx={{ color: '#555' }}>
           Gestión integral del taller

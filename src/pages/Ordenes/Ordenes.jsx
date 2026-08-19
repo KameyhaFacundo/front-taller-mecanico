@@ -54,7 +54,6 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import RowActionsMenu from '../../components/RowActionsMenu'
 import CobroDialog from '../../components/CobroDialog'
 import AppDialog from '../../components/AppDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import VehiculoPicker from '../../components/VehiculoPicker'
 import NuevoVehiculoDialog from '../../components/NuevoVehiculoDialog'
 import TicketDialog from '../../components/TicketDialog'
@@ -154,7 +153,14 @@ export default function Ordenes() {
 
   const vehById = useMemo(() => Object.fromEntries((vehiculos.data ?? []).map((v) => [v.id, v])), [vehiculos.data])
   const repById = useMemo(() => Object.fromEntries((repuestos.data ?? []).map((r) => [r.id, r])), [repuestos.data])
+  // El vehículo trae el cliente solo con nombre (sin teléfonos); para el link
+  // de WhatsApp hay que resolverlo contra el catálogo de clientes, que sí los trae.
+  const clienteById = useMemo(() => Object.fromEntries((clientes.data ?? []).map((c) => [c.id, c])), [clientes.data])
   const filtered = ordenes.rows
+
+  // Cliente con teléfonos resueltos para una orden + su vehículo: preferí el
+  // cliente_id de la orden (más confiable) y si no, el del vehículo.
+  const clienteWaDe = (orden, veh) => clienteById[orden.cliente_id ?? veh?.cliente_id] ?? veh?.cliente ?? null
 
   const handleChange = (event) => setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }))
 
@@ -427,16 +433,6 @@ export default function Ordenes() {
     }
   }
 
-  const columns = [
-    { header: 'N°', key: 'id', render: (o) => `#${o.id}` },
-    { header: 'Cliente', key: 'vehiculo_id', render: (o) => vehById[o.vehiculo_id]?.cliente?.nombre ?? '—' },
-    { header: 'Vehículo', key: 'vehiculo_id', render: (o) => { const v = vehById[o.vehiculo_id]; return v ? `${v.marca} ${v.modelo} ${v.patente}` : '—' } },
-    { header: 'Responsable', key: 'asignado_a', render: (o) => o.asignado?.name ?? '' },
-    { header: 'Estado', key: 'estado', render: (o) => ordenEstadoMeta[o.estado]?.label ?? o.estado },
-    { header: 'Total', key: 'total', render: (o) => fmtMoney(o.total) },
-    { header: 'Pagado', key: 'total_pagado', render: (o) => fmtMoney(o.total_pagado) },
-    { header: 'Saldo', key: 'saldo_pendiente', render: (o) => fmtMoney(o.saldo_pendiente) },
-  ]
 
   return (
     <Box>
@@ -445,12 +441,6 @@ export default function Ordenes() {
         subtitle="Reparaciones en curso, terminadas y entregadas."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="ordenes"
-              sheetName="Órdenes"
-              columns={columns}
-              rowsFetcher={async () => (await listOrdenes({ q: ordenes.q, per_page: 5000, ...fechaParams })).data}
-            />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nueva orden
             </Button>
@@ -506,7 +496,9 @@ export default function Ordenes() {
                   border: '1px solid',
                   borderColor: 'divider',
                   borderRadius: 3,
-                  p: 1.25,
+                  pt: 1.25,
+                  pb: 2,
+                  px: 1.25,
                   minWidth: 0,
                 }}
               >
@@ -520,10 +512,11 @@ export default function Ordenes() {
                   <Chip size="small" label={items.length} sx={{ fontWeight: 800, minWidth: 30 }} />
                 </Stack>
 
-                <Stack spacing={1.25} sx={{ maxHeight: 640, overflowY: 'auto', px: 0.25, pb: 0.25 }}>
+                <Stack spacing={1.25} sx={{ maxHeight: 640, overflowY: 'auto', px: 0.5, pt: 0.5, pb: 1.5 }}>
                   {items.map((orden) => {
                     const veh = vehById[orden.vehiculo_id]
-                    const waUrl = waLink(veh?.cliente?.telefonos?.[0]?.telefono, waMensajeOrden(orden, veh))
+                    const clienteWa = clienteWaDe(orden, veh)
+                    const waUrl = waLink(clienteWa?.telefonos?.[0]?.telefono, waMensajeOrden(orden, veh))
                     const servicios = (orden.items ?? [])
                       .filter((it) => it.tipo === 'mano_obra')
                       .map((it) => it.descripcion)
@@ -609,7 +602,7 @@ export default function Ordenes() {
                             </Typography>
                           </Stack>
 
-                          {(ordenNextEstados[orden.estado] ?? []).length > 0 && (
+                          {(ordenNextEstados[orden.estado] ?? []).length > 0 ? (
                             <Button
                               fullWidth
                               size="small"
@@ -623,6 +616,20 @@ export default function Ordenes() {
                               sx={{ mt: 1.25 }}
                             >
                               {`Marcar ${ordenEstadoMeta[ordenNextEstados[orden.estado][0]]?.label}`}
+                            </Button>
+                          ) : (
+                            <Button
+                              fullWidth
+                              size="small"
+                              variant="text"
+                              color="inherit"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setReabrirTarget(orden)
+                              }}
+                              sx={{ mt: 1.25 }}
+                            >
+                              Reabrir
                             </Button>
                           )}
                         </CardContent>
@@ -798,6 +805,7 @@ export default function Ordenes() {
               <DetailOrden
                 orden={detail}
                 repById={repById}
+                clienteById={clienteById}
                 onClose={() => setDetail(null)}
                 onCobrar={() => { setDetail(null); openCobro(detail) }}
                 onEstado={(estado) => handleEstado(detail, estado)}
@@ -845,7 +853,10 @@ export default function Ordenes() {
   )
 }
 
-function DetailOrden({ orden, repById, onCobrar, onEstado, onTicket, onEdit, onDelete, onReabrir, onMarcarTodos, marcarTodosBusy }) {
+function DetailOrden({ orden, repById, clienteById, onCobrar, onEstado, onTicket, onEdit, onDelete, onReabrir, onMarcarTodos, marcarTodosBusy }) {
+  const veh = orden.vehiculo
+  const clienteWa = clienteById?.[orden.cliente_id ?? veh?.cliente_id] ?? veh?.cliente ?? null
+  const waUrl = waLink(clienteWa?.telefonos?.[0]?.telefono, waMensajeOrden(orden, veh))
   const etapas = ['pendiente', 'en_ejecucion', 'terminado', 'entregado']
   const actualIndex = etapas.indexOf(orden.estado)
   const pctProgreso = Math.max(0, Math.round((actualIndex / (etapas.length - 1)) * 100))
@@ -855,11 +866,10 @@ function DetailOrden({ orden, repById, onCobrar, onEstado, onTicket, onEdit, onD
     .filter((it) => it.tipo === 'mano_obra')
     .map((it) => it.descripcion)
     .filter(Boolean)
-  const veh = orden.vehiculo
 
   const infoRows = [
     { icon: <DirectionsCarIcon fontSize="small" />, label: 'Vehículo', value: veh ? `${veh.marca} ${veh.modelo}`.trim() : '—', sub: veh?.patente },
-    { icon: <PersonIcon fontSize="small" />, label: 'Cliente', value: veh?.cliente?.nombre ?? '—', sub: veh?.cliente?.telefonos?.[0]?.telefono },
+    { icon: <PersonIcon fontSize="small" />, label: 'Cliente', value: veh?.cliente?.nombre ?? '—', sub: clienteWa?.telefonos?.[0]?.telefono },
     { icon: <EngineeringIcon fontSize="small" />, label: 'Responsable', value: orden.asignado?.name ?? 'Sin responsable' },
     { icon: <HandymanIcon fontSize="small" />, label: 'Servicio', value: servicios.length > 0 ? servicios.join(' · ') : 'Sin servicio cargado', full: true },
     { icon: <EventIcon fontSize="small" />, label: 'Inicio', value: fmtDateTime(orden.fecha_inicio) },
@@ -1031,6 +1041,19 @@ function DetailOrden({ orden, repById, onCobrar, onEstado, onTicket, onEdit, onD
                   Cobrar {fmtMoney(orden.saldo_pendiente)}
                 </Button>
               )}
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={<WhatsAppIcon />}
+                component="a"
+                href={waUrl ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                disabled={!waUrl}
+                sx={{ flexGrow: 1 }}
+              >
+                Avisar por WhatsApp
+              </Button>
               <Button variant="outlined" startIcon={<PrintIcon />} onClick={onTicket} sx={{ flexGrow: 1 }}>
                 Imprimir ticket
               </Button>

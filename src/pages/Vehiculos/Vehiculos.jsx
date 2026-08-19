@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Box, Button, Card, CardContent, Chip, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Autocomplete, Box, Button, Card, CardContent, Chip, Grid, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import PersonIcon from '@mui/icons-material/Person'
 import LocalOfferIcon from '@mui/icons-material/LocalOffer'
-import { createVehiculo, deleteVehiculo, importVehiculos, listClientesOptions, listVehiculos, updateVehiculo } from '../../services/clientesApi'
+import { agregarVehiculoCliente, createVehiculo, deleteVehiculo, importVehiculos, listClientesOptions, listVehiculos, updateVehiculo } from '../../services/clientesApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { usePaginatedData } from '../../hooks/usePaginatedData'
 import { useNotify } from '../../context/useNotify'
@@ -17,14 +17,14 @@ import EmptyState from '../../components/EmptyState'
 import AppDialog from '../../components/AppDialog'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import VehiculoFormFields from '../../components/VehiculoFormFields'
+import NuevoClienteDialog from '../../components/NuevoClienteDialog'
 import GestionarMarcasDialog from '../../components/GestionarMarcasDialog'
 import GestionarModelosDialog from '../../components/GestionarModelosDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import Pagination from '../../components/Pagination'
 import { fmtNum, plural } from '../../utils/format'
 
-const emptyForm = { id: null, marca: '', modelo: '', anio: '', patente: '', kilometros: '', imagen_url: '' }
+const emptyForm = { id: null, cliente_id: '', marca: '', modelo: '', anio: '', patente: '', kilometros: '', imagen_url: '' }
 
 const fallbackColor = (v) => {
   const seed = ((v?.marca ?? 'auto').length + (v?.modelo ?? '').length + (v?.patente ?? '').length) % 6
@@ -41,6 +41,7 @@ export default function Vehiculos() {
   const [marcasVersion, setMarcasVersion] = useState(0)
   const [modelosOpen, setModelosOpen] = useState(false)
   const [modelosVersion, setModelosVersion] = useState(0)
+  const [clienteNuevoOpen, setClienteNuevoOpen] = useState(false)
 
   // Full unwrapped list — used as a lookup/dropdown source (owner picker,
   // import-by-name), not rendered as its own paginated table.
@@ -53,7 +54,7 @@ export default function Vehiculos() {
   const openForm = (vehiculo) => {
     setForm(
       vehiculo
-        ? { id: vehiculo.id, marca: vehiculo.marca, modelo: vehiculo.modelo, anio: vehiculo.anio ?? '', patente: vehiculo.patente, kilometros: vehiculo.kilometros ?? '', imagen_url: vehiculo.imagen_url ?? '' }
+        ? { id: vehiculo.id, cliente_id: '', marca: vehiculo.marca, modelo: vehiculo.modelo, anio: vehiculo.anio ?? '', patente: vehiculo.patente, kilometros: vehiculo.kilometros ?? '', imagen_url: vehiculo.imagen_url ?? '' }
         : emptyForm
     )
     setOpen(true)
@@ -69,6 +70,9 @@ export default function Vehiculos() {
       if (form.id) {
         await updateVehiculo(form.id, payload)
         notify.success('Vehículo actualizado.')
+      } else if (form.cliente_id) {
+        await agregarVehiculoCliente(form.cliente_id, payload)
+        notify.success('Vehículo cargado y vinculado al cliente.')
       } else {
         await createVehiculo(payload)
         notify.success('Vehículo cargado.')
@@ -114,14 +118,6 @@ export default function Vehiculos() {
     vehiculos.reload()
   }
 
-  const columns = [
-    { header: 'Marca', key: 'marca' },
-    { header: 'Modelo', key: 'modelo' },
-    { header: 'Año', key: 'anio', render: (v) => v.anio ?? '' },
-    { header: 'Patente', key: 'patente' },
-    { header: 'Cliente', key: 'cliente_id', render: (v) => clienteById[v.cliente_id]?.nombre ?? '' },
-    { header: 'Kilómetros', key: 'kilometros', render: (v) => v.kilometros ?? '' },
-  ]
 
   return (
     <Box>
@@ -130,12 +126,6 @@ export default function Vehiculos() {
         subtitle="Catálogo de vehículos cargados una sola vez. Se crean al cargar un cliente o un turno; acá solo se editan y buscan."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="vehiculos"
-              sheetName="Vehículos"
-              columns={columns}
-              rowsFetcher={async () => (await listVehiculos({ q: vehiculos.q, per_page: 5000 })).data}
-            />
             <ImportExcelButton onImport={handleImport} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nuevo vehículo
@@ -257,9 +247,38 @@ export default function Vehiculos() {
         }
       >
         <Box component="form" id="vehiculo-form" onSubmit={handleSubmit}>
-          <VehiculoFormFields form={form} setForm={setForm} marcasVersion={marcasVersion} modelosVersion={modelosVersion} showImagen autoFocus />
+          <Stack spacing={2}>
+            {!form.id && (
+              <Stack direction="row" spacing={1}>
+                <Autocomplete
+                  sx={{ flexGrow: 1 }}
+                  options={clientes.data ?? []}
+                  getOptionLabel={(c) => c.nombre}
+                  value={(clientes.data ?? []).find((c) => c.id === Number(form.cliente_id)) ?? null}
+                  onChange={(_, c) => setForm((prev) => ({ ...prev, cliente_id: c ? c.id : '' }))}
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  renderInput={(params) => <TextField {...params} label="Cliente (opcional)" placeholder="Buscar cliente…" helperText="Si no elegís uno, el vehículo queda sin dueño y lo vinculás después desde Clientes." autoFocus />}
+                />
+                <Tooltip title="Crear nuevo cliente">
+                  <IconButton color="primary" onClick={() => setClienteNuevoOpen(true)} aria-label="Nuevo cliente" sx={{ mt: 0.5 }}>
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            )}
+            <VehiculoFormFields form={form} setForm={setForm} marcasVersion={marcasVersion} modelosVersion={modelosVersion} showImagen autoFocus={form.id ? true : undefined} />
+          </Stack>
         </Box>
       </AppDialog>
+
+      <NuevoClienteDialog
+        open={clienteNuevoOpen}
+        onClose={() => setClienteNuevoOpen(false)}
+        onCreated={(cliente) => {
+          clientes.refresh()
+          setForm((prev) => ({ ...prev, cliente_id: cliente.id }))
+        }}
+      />
 
       <GestionarMarcasDialog open={marcasOpen} onClose={() => setMarcasOpen(false)} onChanged={() => setMarcasVersion((v) => v + 1)} />
       <GestionarModelosDialog open={modelosOpen} onClose={() => setModelosOpen(false)} onChanged={() => setModelosVersion((v) => v + 1)} />

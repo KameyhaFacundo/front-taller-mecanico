@@ -57,7 +57,7 @@ export default function Login() {
           p: 5,
           color: '#fff',
           overflow: 'hidden',
-          background: mode === 'dark' ? 'linear-gradient(160deg, #0a0f0d 0%, #10261f 60%, #0d1714 100%)' : 'linear-gradient(160deg, #0a2e26 0%, #0e4d3f 60%, #11664f 100%)',
+          background: mode === 'dark' ? 'linear-gradient(160deg, #05070d 0%, #0d1830 60%, #070c17 100%)' : 'linear-gradient(160deg, #0a1a4d 0%, #10357d 60%, #1656d1 100%)',
         }}
       >
         <Box sx={{ position: 'absolute', inset: 0, opacity: 0.08, pointerEvents: 'none' }}>
@@ -70,17 +70,10 @@ export default function Login() {
         </Box>
 
         <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{ width: 52, height: 52, borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (t) => t.custom.brandGradient, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
-            <SpeedIcon />
-          </Box>
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-              Exe-Mecanica
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.7 }}>
-              Gestión integral del taller
-            </Typography>
-          </Box>
+          <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: 64, width: 'auto', filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.3))' }} />
+          <Typography variant="body2" sx={{ opacity: 0.7 }}>
+            Gestión integral del taller
+          </Typography>
         </Box>
 
         <Box sx={{ position: 'relative', maxWidth: 420 }}>
@@ -106,19 +99,14 @@ export default function Login() {
         </Box>
 
         <Typography variant="caption" sx={{ position: 'relative', opacity: 0.5 }}>
-          © {new Date().getFullYear()} Exe-Mecanica · Panel de gestión
+          © {new Date().getFullYear()} Impulsa Motors · Panel de gestión
         </Typography>
       </Box>
 
       <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 2, sm: 4 } }}>
         <Box sx={{ width: '100%', maxWidth: 400 }}>
-          <Box sx={{ display: { xs: 'flex', lg: 'none' }, alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 4 }}>
-            <Box sx={{ width: 44, height: 44, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (t) => t.custom.brandGradient, color: '#fff' }}>
-              <SpeedIcon fontSize="small" />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Exe-Mecanica
-            </Typography>
+          <Box sx={{ display: { xs: 'flex', lg: 'none' }, alignItems: 'center', justifyContent: 'center', mb: 4 }}>
+            <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: 56, width: 'auto' }} />
           </Box>
 
           <Typography variant="h4" gutterBottom>

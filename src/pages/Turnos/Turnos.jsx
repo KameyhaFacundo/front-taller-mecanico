@@ -36,7 +36,6 @@ import { useNotify } from '../../context/useNotify'
 import AppDialog from '../../components/AppDialog'
 import PageHeader from '../../components/PageHeader'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import VehiculoPicker from '../../components/VehiculoPicker'
 import VehiculoFormFields from '../../components/VehiculoFormFields'
@@ -607,13 +606,6 @@ export default function Turnos() {
     }
   }
 
-  const columns = [
-    { header: 'Patente', key: 'vehiculo_id', render: (t) => vehById[t.vehiculo_id]?.patente ?? '—' },
-    { header: 'Servicio', key: 'servicio_id', render: (t) => (t.servicios?.length ? t.servicios.map((s) => s.nombre).join(' + ') : servById[t.servicio_id]?.nombre ?? `#${t.servicio_id}`) },
-    { header: 'Fecha', key: 'fecha_hora', render: (t) => fmtDateTime(t.fecha_hora) },
-    { header: 'Cliente', key: 'vehiculo_id', render: (t) => vehById[t.vehiculo_id]?.cliente?.nombre ?? '—' },
-    { header: 'Estado', key: 'estado', render: (t) => turnoEstadoMeta[t.estado]?.label ?? t.estado },
-  ]
 
   const accionesTurno = accionesTarget
   const nextEstados = accionesTarget ? (turnoNextEstados[accionesTarget.estado] ?? []) : []
@@ -635,7 +627,6 @@ export default function Turnos() {
         subtitle="Agenda del taller en tiempo real."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton filename="turnos" sheetName="Turnos" columns={columns} rowsFetcher={async () => await listTurnos()} />
             <ImportExcelButton onImport={handleImport} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nuevo turno

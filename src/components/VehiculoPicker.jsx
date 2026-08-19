@@ -4,7 +4,7 @@ import AddIcon from '@mui/icons-material/Add'
 
 const matchText = (value, q) => String(value ?? '').toLowerCase().includes(q)
 
-export default function VehiculoPicker({ clientes = [], vehiculos = [], vehiculoId, clienteId, onVehiculoChange, onClienteChange, onCreateVehiculo, required = false, autoFocus = false }) {
+export default function VehiculoPicker({ clientes = [], vehiculos = [], vehiculoId, clienteId, onVehiculoChange, onClienteChange, onCreateVehiculo, onCreateCliente, required = false, autoFocus = false }) {
   const [inputVehiculo, setInputVehiculo] = useState('')
   const cliente = clientes.find((c) => c.id === Number(clienteId)) ?? null
   const vehiculo = vehiculos.find((v) => v.id === Number(vehiculoId)) ?? null
@@ -42,19 +42,28 @@ export default function VehiculoPicker({ clientes = [], vehiculos = [], vehiculo
 
   return (
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%' }}>
-      <Autocomplete
-        sx={{ flexGrow: 1 }}
-        options={clientes}
-        getOptionLabel={(c) => c.nombre}
-        value={cliente}
-        onChange={(_, c) => onClienteChange(c ? c.id : '')}
-        filterOptions={(opts, { inputValue }) => {
-          const q = inputValue.trim().toLowerCase()
-          return q ? opts.filter((c) => matchText(c.nombre, q)) : opts
-        }}
-        renderInput={(params) => <TextField {...params} label="Cliente" placeholder="Buscar cliente…" />}
-        isOptionEqualToValue={(a, b) => a.id === b.id}
-      />
+      <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
+        <Autocomplete
+          sx={{ flexGrow: 1 }}
+          options={clientes}
+          getOptionLabel={(c) => c.nombre}
+          value={cliente}
+          onChange={(_, c) => onClienteChange(c ? c.id : '')}
+          filterOptions={(opts, { inputValue }) => {
+            const q = inputValue.trim().toLowerCase()
+            return q ? opts.filter((c) => matchText(c.nombre, q)) : opts
+          }}
+          renderInput={(params) => <TextField {...params} label="Cliente" placeholder="Buscar cliente…" />}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+        />
+        {onCreateCliente && (
+          <Tooltip title="Crear nuevo cliente">
+            <IconButton color="primary" onClick={onCreateCliente} aria-label="Nuevo cliente" sx={{ mt: 0.5 }}>
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Stack>
       <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
         <Autocomplete
           sx={{ flexGrow: 1 }}

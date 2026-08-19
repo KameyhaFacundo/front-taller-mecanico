@@ -15,7 +15,6 @@ import SearchInput from '../../components/SearchInput'
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import Pagination from '../../components/Pagination'
 import { initials, plural } from '../../utils/format'
@@ -80,12 +79,6 @@ export default function Users() {
     }
   }
 
-  const columns = [
-    { header: 'Usuario', key: 'name', render: (u) => u.name },
-    { header: 'Correo', key: 'email', render: (u) => u.email },
-    { header: 'Rol', key: 'role', render: (u) => (u.role === 'admin' ? 'Admin' : 'Empleado') },
-  ]
-
   const handleImport = async (rows) => {
     const fallos = []
     const payload = []
@@ -119,12 +112,6 @@ export default function Users() {
         subtitle="Gestión de cuentas y permisos del sistema."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="usuarios"
-              sheetName="Usuarios"
-              columns={columns}
-              rowsFetcher={async () => (await listUsers({ q: users.q, per_page: 5000 })).data}
-            />
             <ImportExcelButton onImport={handleImport} label="Importar usuarios" />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nuevo usuario
@@ -157,7 +144,7 @@ export default function Users() {
                 <TableCell>Usuario</TableCell>
                 <TableCell>Correo</TableCell>
                 <TableCell>Rol</TableCell>
-                <TableCell align="right">Acciones</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -184,7 +171,7 @@ export default function Users() {
                   <TableCell>
                     <Chip size="small" label={targetUser.role === 'admin' ? 'Admin' : 'Empleado'} color={targetUser.role === 'admin' ? 'primary' : 'default'} variant={targetUser.role === 'admin' ? 'filled' : 'outlined'} />
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="center">
                     <Tooltip title="Editar">
                       <IconButton size="small" onClick={() => openForm(targetUser)} aria-label="Editar">
                         <EditIcon fontSize="small" />

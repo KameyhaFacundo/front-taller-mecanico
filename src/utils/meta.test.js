@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compraEstadoMeta, ordenEstadoMeta, ordenNextEstados, pagoMetodoMeta, turnoEstadoMeta, turnoNextEstados } from './meta.js'
+import { compraEstadoMeta, ordenEstadoMeta, ordenNextEstados, pagoMetodoMeta, presupuestoEstadoMeta, turnoEstadoMeta, turnoNextEstados } from './meta.js'
 
 describe('ordenEstadoMeta', () => {
   it('define los 4 estados del flujo de órdenes', () => {
@@ -33,5 +33,12 @@ describe('compraEstadoMeta', () => {
   it('define los estados de compra', () => {
     expect(compraEstadoMeta.pagado.label).toBe('Pagado')
     expect(compraEstadoMeta.pendiente.label).toBe('Pendiente')
+  })
+})
+
+describe('presupuestoEstadoMeta', () => {
+  it('define los 4 estados del flujo de presupuestos', () => {
+    expect(Object.keys(presupuestoEstadoMeta)).toEqual(['pendiente', 'aprobado', 'rechazado', 'convertido'])
+    expect(presupuestoEstadoMeta.convertido.label).toBe('Convertido en orden')
   })
 })

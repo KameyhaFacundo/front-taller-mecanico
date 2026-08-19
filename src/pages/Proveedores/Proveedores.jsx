@@ -15,7 +15,6 @@ import SearchInput from '../../components/SearchInput'
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import Pagination from '../../components/Pagination'
 import { plural } from '../../utils/format'
@@ -118,14 +117,6 @@ export default function Proveedores() {
     proveedores.reload()
   }
 
-  const columns = [
-    { header: 'Nombre', key: 'nombre' },
-    { header: 'Código', key: 'codigo' },
-    { header: 'Teléfonos', key: 'telefonos', render: (p) => (p.telefonos ?? []).map((t) => t.telefono).join('; ') },
-    { header: 'Emails', key: 'emails', render: (p) => (p.emails ?? []).map((e) => e.email).join('; ') },
-    { header: 'CUIT', key: 'cuit' },
-    { header: 'Domicilio', key: 'domicilio' },
-  ]
 
   return (
     <Box>
@@ -134,12 +125,6 @@ export default function Proveedores() {
         subtitle="Proveedores de productos e insumos del taller."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="proveedores"
-              sheetName="Proveedores"
-              columns={columns}
-              rowsFetcher={async () => (await listProveedores({ q: proveedores.q, per_page: 5000 })).data}
-            />
             <ImportExcelButton onImport={handleImport} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nuevo proveedor
@@ -181,7 +166,7 @@ export default function Proveedores() {
                 <TableCell>Emails</TableCell>
                 <TableCell>CUIT</TableCell>
                 <TableCell>Domicilio</TableCell>
-                <TableCell align="right">Acciones</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -230,7 +215,7 @@ export default function Proveedores() {
                   </TableCell>
                   <TableCell>{p.cuit || '—'}</TableCell>
                   <TableCell>{p.domicilio || '—'}</TableCell>
-                  <TableCell align="right">
+                  <TableCell align="center">
                     <Tooltip title="Editar">
                       <IconButton size="small" onClick={() => openForm(p)} aria-label="Editar">
                         <EditIcon fontSize="small" />

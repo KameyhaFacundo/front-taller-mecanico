@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Avatar,
@@ -9,6 +10,8 @@ import {
   Grid,
   Skeleton,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   useTheme,
 } from '@mui/material'
@@ -27,8 +30,7 @@ import { useAsyncData } from '../../hooks/useAsyncData'
 import { useAuth } from '../../hooks/useAuth'
 import StatCard from '../../components/StatCard'
 import EmptyState from '../../components/EmptyState'
-import ExportExcelButton from '../../components/ExportExcelButton'
-import { fmtMoney, fmtDayName, initials } from '../../utils/format'
+import { fmtMoney, fmtDate, fmtDayName, initials } from '../../utils/format'
 import { turnoOrigenMeta } from '../../utils/meta'
 
 function saludo() {
@@ -36,6 +38,12 @@ function saludo() {
   if (hour < 12) return 'Buenos días'
   if (hour < 19) return 'Buenas tardes'
   return 'Buenas noches'
+}
+
+const RANGO_LABEL = {
+  dia: 'Turnos de hoy',
+  semana: 'Turnos de la semana',
+  mes: 'Turnos del mes',
 }
 
 function DashboardSkeleton() {
@@ -73,7 +81,15 @@ export default function Dashboard() {
   const theme = useTheme()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const dashboard = useAsyncData(getDashboard, { errorMessage: 'No se pudo cargar el panel.' })
+  const [rango, setRango] = useState('semana')
+  const dashboard = useAsyncData((p) => getDashboard(p ?? { rango }), { errorMessage: 'No se pudo cargar el panel.' })
+
+  // useAsyncData sólo refetchea en el mount inicial; el cambio de filtro
+  // necesita disparar la recarga explícitamente, igual que en Caja.
+  useEffect(() => {
+    dashboard.reload({ rango })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rango])
 
   const data = dashboard.data ?? {}
 
@@ -82,12 +98,11 @@ export default function Dashboard() {
   }
 
   const stats = data.stats ?? {}
-  const turnosHoy = data.turnos_hoy ?? []
+  const turnos = data.turnos ?? []
   const ordenes = data.ordenes ?? {}
   const alertas = data.alertas ?? {}
   const cobrosPendientes = alertas.cobros_pendientes ?? []
   const stockBajo = alertas.stock_bajo ?? []
-  const clientesSinTurno = alertas.clientes_sin_turno ?? 0
 
   const totalPendiente = cobrosPendientes.reduce((acc, cobro) => acc + Number(cobro.saldo || 0), 0)
 
@@ -96,13 +111,6 @@ export default function Dashboard() {
     { key: 'en_ejecucion', label: 'En ejecución', icon: ConstructionIcon, color: 'primary' },
     { key: 'terminado', label: 'Terminado', icon: CheckCircleIcon, color: 'success' },
     { key: 'entregado', label: 'Entregado', icon: LocalShippingIcon, color: 'info' },
-  ]
-
-  const exportColumns = [
-    { header: 'Cliente', key: 'cliente', render: (t) => t.cliente },
-    { header: 'Vehículo', key: 'vehiculo', render: (t) => t.vehiculo },
-    { header: 'Servicio', key: 'servicio', render: (t) => t.servicio },
-    { header: 'Hora', key: 'hora', render: (t) => t.hora },
   ]
 
   return (
@@ -136,13 +144,6 @@ export default function Dashboard() {
               </Box>
             </Stack>
             <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-              <ExportExcelButton
-                filename="panel-gestion"
-                sheetName="Resumen"
-                columns={exportColumns}
-                rows={turnosHoy}
-                sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
-              />
               <Button
                 variant="outlined"
                 startIcon={<ReceiptLongIcon />}
@@ -183,18 +184,24 @@ export default function Dashboard() {
         <Grid size={{ xs: 12, lg: 8 }}>
           <Card variant="outlined" sx={{ height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CalendarMonthIcon color="primary" />
-                Turnos de hoy
-              </Typography>
-              {turnosHoy.length === 0 ? (
-                <EmptyState title="Sin turnos" description="No hay turnos confirmados para hoy." />
+              <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1, mb: 1 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CalendarMonthIcon color="primary" />
+                  {RANGO_LABEL[rango]}
+                </Typography>
+                <ToggleButtonGroup value={rango} exclusive size="small" onChange={(_, value) => value && setRango(value)}>
+                  <ToggleButton value="dia">Día</ToggleButton>
+                  <ToggleButton value="semana">Semana</ToggleButton>
+                  <ToggleButton value="mes">Mes</ToggleButton>
+                </ToggleButtonGroup>
+              </Stack>
+              {turnos.length === 0 ? (
+                <EmptyState title="Sin turnos" description="No hay turnos confirmados en el período seleccionado." />
               ) : (
                 <Stack divider={<Box sx={{ borderTop: '1px solid', borderColor: 'divider' }} />}>
-                  {turnosHoy.map((turno) => (
+                  {turnos.map((turno) => (
                     <Box key={turno.id} onClick={() => navigate('/turnos')} sx={{ py: 1.25, display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', borderRadius: 1.5, transition: 'background-color 0.15s ease', '&:hover': { bgcolor: 'action.hover' } }}>
-                      <Typography
-                        variant="body2"
+                      <Box
                         sx={{
                           minWidth: 52,
                           textAlign: 'center',
@@ -203,11 +210,17 @@ export default function Dashboard() {
                           borderRadius: 1.5,
                           px: 1,
                           py: 0.5,
-                          fontVariantNumeric: 'tabular-nums',
                         }}
                       >
-                        {turno.hora}
-                      </Typography>
+                        {rango !== 'dia' && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+                            {fmtDate(turno.fecha)}
+                          </Typography>
+                        )}
+                        <Typography variant="body2" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                          {turno.hora}
+                        </Typography>
+                      </Box>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }} noWrap>
                           {turno.cliente}
@@ -282,43 +295,6 @@ export default function Dashboard() {
                     </Box>
                   ))
                 )}
-              </Stack>
-
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-                <CalendarMonthIcon fontSize="small" color="text.secondary" />
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                  Clientes sin turno
-                </Typography>
-                {clientesSinTurno > 0 && (
-                  <Chip size="small" label={clientesSinTurno} color="warning" sx={{ ml: 'auto' }} />
-                )}
-              </Stack>
-              <Stack sx={{ mb: 3 }} spacing={0.5}>
-                <Box
-                  onClick={() => navigate('/clientes', { state: { sinTurno: true } })}
-                  sx={{
-                    py: 0.75,
-                    px: 1,
-                    borderRadius: 1.5,
-                    cursor: 'pointer',
-                    bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'background.default'),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 1.5,
-                    transition: 'background-color 0.15s ease',
-                    '&:hover': { bgcolor: 'action.hover' },
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-                    {clientesSinTurno > 0 ? (clientesSinTurno === 1 ? 'Un cliente' : `${clientesSinTurno} clientes`) + ' con autos aún sin turno' : 'Todos los clientes tienen turno'}
-                  </Typography>
-                  {clientesSinTurno > 0 && (
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap' }}>
-                      Agendar
-                    </Typography>
-                  )}
-                </Box>
               </Stack>
 
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>

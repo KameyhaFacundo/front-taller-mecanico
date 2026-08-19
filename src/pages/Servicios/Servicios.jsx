@@ -15,7 +15,6 @@ import SearchInput from '../../components/SearchInput'
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import Pagination from '../../components/Pagination'
 import { fmtMoney, parseNumero, plural } from '../../utils/format'
@@ -103,13 +102,6 @@ export default function Servicios() {
     servicios.reload()
   }
 
-  const columns = [
-    { header: 'Servicio', key: 'nombre' },
-    { header: 'Duración (min)', key: 'duracion_min' },
-    { header: 'Precio base', key: 'precio_base', render: (s) => (s.precio_base != null ? fmtMoney(s.precio_base) : '') },
-    { header: 'Origen', key: 'autogestionable', render: (s) => (s.autogestionable ? 'Sí' : 'No') },
-  ]
-
   return (
     <Box>
       <PageHeader
@@ -117,12 +109,6 @@ export default function Servicios() {
         subtitle="Servicios ofrecidos por el taller y su duración estimada."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="servicios"
-              sheetName="Servicios"
-              columns={columns}
-              rowsFetcher={async () => (await listServicios({ q: servicios.q, per_page: 5000 })).data}
-            />
             <ImportExcelButton onImport={handleImport} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm(null)}>
               Nuevo servicio
@@ -162,7 +148,7 @@ export default function Servicios() {
                 <TableCell align="center">Duración</TableCell>
                 <TableCell align="right">Precio base</TableCell>
                 <TableCell>Origen</TableCell>
-                <TableCell align="right">Acciones</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -193,7 +179,7 @@ export default function Servicios() {
                       variant={s.autogestionable ? 'filled' : 'outlined'}
                     />
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="center">
                     <Tooltip title="Editar">
                       <IconButton size="small" onClick={() => openForm(s)} aria-label="Editar">
                         <EditIcon fontSize="small" />

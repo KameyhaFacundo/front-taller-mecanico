@@ -45,3 +45,10 @@ export const compraEstadoMeta = {
   pagado: { label: 'Pagado', color: 'success' },
   pendiente: { label: 'Pendiente', color: 'warning' },
 }
+
+export const presupuestoEstadoMeta = {
+  pendiente: { label: 'Pendiente', color: 'warning' },
+  aprobado: { label: 'Aprobado', color: 'success' },
+  rechazado: { label: 'Rechazado', color: 'error' },
+  convertido: { label: 'Convertido en orden', color: 'info' },
+}

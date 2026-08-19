@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react'
-import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   AppBar,
   Avatar,
   Box,
-  Button,
   Divider,
   Drawer,
   IconButton,
@@ -19,32 +18,36 @@ import {
   Typography,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import LogoutIcon from '@mui/icons-material/Logout'
 import SpeedIcon from '@mui/icons-material/Speed'
 import PeopleIcon from '@mui/icons-material/People'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import AssignmentIcon from '@mui/icons-material/Assignment'
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import BuildIcon from '@mui/icons-material/Build'
 import SettingsIcon from '@mui/icons-material/Settings'
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import DarkModeIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeIcon from '@mui/icons-material/LightModeOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../context/useColorMode'
 import { useTokenExpirationCheck } from '../hooks/useTokenExpirationCheck'
 import HelpDialog from '../components/HelpDialog'
 import { initials } from '../utils/format'
 
-// No sidebar — navigation lives in a horizontal bar up top, so the page
-// content gets the full width of the screen. `children` groups (Inventario)
-// open as a dropdown instead of eating more horizontal space.
+const DRAWER_WIDTH = 228
+const RAIL_WIDTH = 84
+const LOGO_HEIGHT = 32
+const SIDEBAR_STORAGE_KEY = 'sidebarOpen'
+
 const sections = [
   { key: 'panel', icon: SpeedIcon, label: 'Panel', path: '/panel', end: true },
   {
@@ -54,6 +57,7 @@ const sections = [
     children: [
       { icon: CalendarMonthIcon, label: 'Turnos', path: '/turnos' },
       { icon: AssignmentIcon, label: 'Órdenes', path: '/ordenes' },
+      { icon: RequestQuoteIcon, label: 'Presupuestos', path: '/presupuestos' },
     ],
   },
   { key: 'caja', icon: PaymentsIcon, label: 'Caja', path: '/caja' },
@@ -83,10 +87,15 @@ export default function ProtectedLayout() {
   const { token, loading, user, role, logout } = useAuth()
   const { mode, toggleColorMode } = useColorMode()
   const location = useLocation()
+  const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopOpen, setDesktopOpen] = useState(() => localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'false')
   const [userMenuAnchor, setUserMenuAnchor] = useState(null)
-  const [menuAnchors, setMenuAnchors] = useState({})
   useTokenExpirationCheck()
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(desktopOpen))
+  }, [desktopOpen])
 
   const allSections = useMemo(() => {
     if (role !== 'admin') return sections
@@ -104,89 +113,23 @@ export default function ProtectedLayout() {
   if (loading) return null
   if (!token) return <Navigate to="/login" replace />
 
-  const navButtonSx = (active) => ({
-    borderRadius: 2,
-    px: 1.5,
-    minHeight: 38,
-    color: active ? 'primary.main' : 'text.secondary',
-    bgcolor: active ? 'action.selected' : 'transparent',
-    fontWeight: active ? 700 : 500,
-    textTransform: 'none',
-    whiteSpace: 'nowrap',
-    '&:hover': { bgcolor: 'action.hover' },
-  })
-
-  const desktopNav = (
-    <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5, overflowX: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
-      {allSections.map((section) => {
-        const Icon = section.icon
-        const active = isSectionActive(section)
-
-        if (section.children) {
-          const open = Boolean(menuAnchors[section.key])
-          return (
-            <Box key={section.key}>
-              <Button
-                startIcon={<Icon fontSize="small" />}
-                endIcon={<KeyboardArrowDownIcon fontSize="small" />}
-                onClick={(e) => setMenuAnchors((prev) => ({ ...prev, [section.key]: e.currentTarget }))}
-                sx={navButtonSx(active)}
-              >
-                {section.label}
-              </Button>
-              <Menu
-                anchorEl={menuAnchors[section.key]}
-                open={open}
-                onClose={() => setMenuAnchors((prev) => ({ ...prev, [section.key]: null }))}
-              >
-                {section.children.map((child) => {
-                  const ChildIcon = child.icon
-                  return (
-                    <MenuItem
-                      key={child.path}
-                      component={NavLink}
-                      to={child.path}
-                      selected={isPathActive(child.path)}
-                      onClick={() => setMenuAnchors((prev) => ({ ...prev, [section.key]: null }))}
-                    >
-                      <ListItemIcon>
-                        <ChildIcon fontSize="small" />
-                      </ListItemIcon>
-                      {child.label}
-                    </MenuItem>
-                  )
-                })}
-              </Menu>
-            </Box>
-          )
-        }
-
-        return (
-          <Button key={section.key} component={NavLink} to={section.path} end={section.end} startIcon={<Icon fontSize="small" />} sx={navButtonSx(active)}>
-            {section.label}
-          </Button>
-        )
-      })}
-    </Box>
-  )
-
-  const mobileNavContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'custom.sidebar', color: 'custom.sidebarText' }}>
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 64 }}>
-        <Box sx={{ width: 40, height: 40, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`, color: '#fff' }}>
-          <SpeedIcon fontSize="small" />
-        </Box>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 800, lineHeight: 1.1 }}>
-            Exe-Mecanica
-          </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.6 }}>
-            Panel de gestión
-          </Typography>
-        </Box>
+  const renderSidebar = (onClose, onNavigate = () => {}) => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: (t) => t.custom.sidebar, color: (t) => t.custom.sidebarText }}>
+      <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 56 }}>
+        <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: LOGO_HEIGHT, width: 'auto', flexShrink: 0 }} />
+        <Box sx={{ flexGrow: 1 }} />
+        <Tooltip title="Colapsar menú">
+          <IconButton
+            size="small"
+            onClick={onClose}
+            sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1, bgcolor: (t) => t.custom.sidebarHover } }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
-      <List sx={{ flexGrow: 1, px: 1.25, py: 1.25, overflow: 'auto' }}>
+      <Divider sx={{ borderColor: (t) => t.custom.sidebarBorder }} />
+      <List sx={{ flexGrow: 1, minHeight: 0, px: 1.25, py: 1.25, overflowY: 'auto' }}>
         {allSections.map((section) =>
           section.children ? (
             <Box key={section.key} sx={{ mb: 1 }}>
@@ -194,23 +137,104 @@ export default function ProtectedLayout() {
                 {section.label}
               </Typography>
               {section.children.map((child) => (
-                <MobileNavItem key={child.path} link={child} active={isPathActive(child.path)} onNavigate={() => setMobileOpen(false)} />
+                <NavItem key={child.path} link={child} active={isPathActive(child.path)} onNavigate={onNavigate} />
               ))}
             </Box>
           ) : (
-            <MobileNavItem key={section.key} link={section} active={isSectionActive(section)} onNavigate={() => setMobileOpen(false)} />
+            <NavItem key={section.key} link={section} active={isSectionActive(section)} onNavigate={onNavigate} />
           )
         )}
+        <HelpDialog variant="menuItem" />
       </List>
+
+      <Divider sx={{ borderColor: (t) => t.custom.sidebarBorder }} />
+      <Box sx={{ px: 1.25, pt: 1.25, pb: 1.25 }}>
+        <Box
+          onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+          sx={{
+            borderRadius: 2,
+            p: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            cursor: 'pointer',
+            bgcolor: (t) => t.custom.sidebarSurface,
+            transition: 'background-color 0.15s ease',
+            '&:hover': { bgcolor: (t) => t.custom.sidebarHover },
+          }}
+        >
+          <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+            {initials(user?.name)}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography variant="body2" noWrap sx={{ color: (t) => t.palette.text.primary, fontWeight: 700, lineHeight: 1.25, fontSize: 13 }}>
+              {user?.name}
+            </Typography>
+            <Typography variant="caption" noWrap sx={{ opacity: 0.6, fontSize: 11 }}>
+              {role === 'admin' ? 'Admin' : 'Empleado'}
+            </Typography>
+          </Box>
+          <MoreVertIcon fontSize="small" sx={{ opacity: 0.5, flexShrink: 0 }} />
+        </Box>
+      </Box>
+    </Box>
+  )
+
+  const rail = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', bgcolor: (t) => t.custom.sidebar, color: (t) => t.custom.sidebarText }}>
+      <Box sx={{ pl: 0.5, pr: 0.25, py: 1.5, minHeight: 56, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, width: '100%' }}>
+        <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: LOGO_HEIGHT, width: 'auto', flexShrink: 0 }} />
+        <Tooltip title="Abrir menú" placement="right">
+          <IconButton
+            size="small"
+            onClick={() => setDesktopOpen(true)}
+            sx={{
+              width: 16,
+              height: 16,
+              flexShrink: 0,
+              color: 'inherit',
+              opacity: 0.7,
+              '&:hover': { opacity: 1, bgcolor: (t) => t.custom.sidebarHover },
+            }}
+          >
+            <ChevronLeftIcon sx={{ fontSize: 11, transform: 'rotate(180deg)' }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+      <Divider sx={{ borderColor: (t) => t.custom.sidebarBorder, width: '100%' }} />
+      <List sx={{ flexGrow: 1, minHeight: 0, py: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75, width: '100%' }}>
+        {allSections.map((section, index) => (
+          <Box key={section.key} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, width: '100%' }}>
+            {index > 0 && <Divider sx={{ borderColor: (t) => t.custom.sidebarBorder, width: 28, mb: 0.25 }} />}
+            {section.children ? (
+              section.children.map((child) => <RailNavItem key={child.path} link={child} active={isPathActive(child.path)} />)
+            ) : (
+              <RailNavItem link={section} active={isSectionActive(section)} />
+            )}
+          </Box>
+        ))}
+      </List>
+      <Divider sx={{ borderColor: (t) => t.custom.sidebarBorder, width: '100%' }} />
+      <Box sx={{ py: 1.25, display: 'flex', justifyContent: 'center', width: '100%' }}>
+        <Tooltip title={user?.name || 'Cuenta'} placement="right">
+          <Avatar
+            onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+            sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+          >
+            {initials(user?.name)}
+          </Avatar>
+        </Tooltip>
+      </Box>
     </Box>
   )
 
   return (
-    <Box sx={{ minHeight: '100svh', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', height: '100svh', overflow: 'hidden', bgcolor: 'background.default' }}>
       <AppBar
         position="fixed"
         elevation={0}
         sx={{
+          display: { xs: 'block', md: 'none' },
           bgcolor: (t) => t.custom.appbar,
           backdropFilter: 'blur(12px)',
           color: 'text.primary',
@@ -219,41 +243,38 @@ export default function ProtectedLayout() {
         }}
       >
         <Toolbar sx={{ gap: 1.5 }}>
-          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen((v) => !v)} sx={{ display: { md: 'none' } }}>
+          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen((v) => !v)}>
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-            <Box sx={{ width: 30, height: 30, borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`, color: '#fff' }}>
-              <SpeedIcon sx={{ fontSize: 17 }} />
-            </Box>
-            <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', display: { xs: 'none', sm: 'block' } }}>
-              Exe-Mecanica
-            </Typography>
-          </Box>
-
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center', minWidth: 0 }}>{desktopNav}</Box>
-
-          <Box sx={{ display: { xs: 'flex', md: 'none' }, flexGrow: 1 }} />
-
-          <Tooltip title={mode === 'light' ? 'Modo oscuro' : 'Modo claro'}>
-            <IconButton onClick={toggleColorMode} color="inherit">
-              {mode === 'light' ? <DarkModeIcon fontSize="small" /> : <LightModeIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-          <HelpDialog />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 0.5, flexShrink: 0 }}>
-            <Tooltip title={`${user?.name} · ${role === 'admin' ? 'Admin' : 'Empleado'}`}>
-              <Avatar sx={{ width: 34, height: 34, bgcolor: 'secondary.main', fontSize: 13, fontWeight: 700, color: '#fff' }}>{initials(user?.name)}</Avatar>
-            </Tooltip>
-            <IconButton size="small" onClick={(event) => setUserMenuAnchor(event.currentTarget)} aria-label="Opciones de usuario">
-              <MoreVertIcon fontSize="small" />
-            </IconButton>
-          </Box>
+          <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: 32, width: 'auto', flexShrink: 0 }} />
         </Toolbar>
       </AppBar>
 
       <Menu anchorEl={userMenuAnchor} open={Boolean(userMenuAnchor)} onClose={() => setUserMenuAnchor(null)}>
+        <MenuItem
+          onClick={() => {
+            setUserMenuAnchor(null)
+            navigate('/configuracion')
+          }}
+        >
+          <ListItemIcon>
+            <ManageAccountsIcon fontSize="small" />
+          </ListItemIcon>
+          Configuración
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            toggleColorMode()
+            setUserMenuAnchor(null)
+          }}
+        >
+          <ListItemIcon>
+            {mode === 'light' ? <DarkModeIcon fontSize="small" /> : <LightModeIcon fontSize="small" />}
+          </ListItemIcon>
+          {mode === 'light' ? 'Modo oscuro' : 'Modo claro'}
+        </MenuItem>
+        <Divider />
         <MenuItem
           onClick={() => {
             setUserMenuAnchor(null)
@@ -272,26 +293,90 @@ export default function ProtectedLayout() {
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
         ModalProps={{ keepMounted: true }}
-        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 260, border: 'none' } }}
+        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: DRAWER_WIDTH, border: 'none' } }}
       >
-        {mobileNavContent}
+        {renderSidebar(() => setMobileOpen(false))}
       </Drawer>
 
-      <Box component="main" sx={{ p: { xs: 2, md: 3 }, mt: 8 }}>
-        <Outlet />
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          width: { md: desktopOpen ? DRAWER_WIDTH : RAIL_WIDTH },
+          flexShrink: 0,
+          transition: (t) => t.transitions.create('width', { duration: t.transitions.duration.shorter }),
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: desktopOpen ? DRAWER_WIDTH : RAIL_WIDTH,
+            border: 'none',
+            borderRight: '1px solid',
+            borderColor: (t) => t.custom.sidebarBorder,
+            overflowX: 'hidden',
+            height: '100%',
+            transition: (t) => t.transitions.create('width', { duration: t.transitions.duration.shorter }),
+          },
+        }}
+      >
+        {desktopOpen ? renderSidebar(() => setDesktopOpen(false)) : rail}
+      </Drawer>
+
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          minHeight: 0,
+          height: '100%',
+          overflowY: 'auto',
+          display: 'flex',
+          alignItems: 'flex-start',
+          p: { xs: 2, md: 3 },
+          mt: { xs: 8, md: 0 },
+        }}
+      >
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Outlet />
+        </Box>
       </Box>
     </Box>
   )
 }
 
-function MobileNavItem({ link, active, onNavigate }) {
+function NavItem({ link, active, onNavigate }) {
   const Icon = link.icon
   return (
-    <ListItemButton component={NavLink} to={link.path} end={link.end} onClick={onNavigate} selected={active} sx={{ borderRadius: 2, mb: 0.5, minHeight: 44, color: active ? '#fff' : 'inherit', '&.Mui-selected': { background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.primary.dark})`, color: '#fff' }, '&:hover:not(.Mui-selected)': { backgroundColor: 'rgba(255,255,255,0.06)' } }}>
+    <ListItemButton component={NavLink} to={link.path} end={link.end} onClick={onNavigate} selected={active} sx={{ borderRadius: 2, mb: 0.5, minHeight: 44, color: active ? '#fff' : 'inherit', '&.Mui-selected': { background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.primary.dark})`, color: '#fff' }, '&:hover:not(.Mui-selected)': { backgroundColor: (t) => t.custom.sidebarHover } }}>
       <ListItemIcon sx={{ minWidth: 0, mr: 1.25, color: 'inherit' }}>
         <Icon fontSize="small" />
       </ListItemIcon>
       <ListItemText primary={link.label} slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 600 } } }} />
     </ListItemButton>
+  )
+}
+
+function RailNavItem({ link, active }) {
+  const Icon = link.icon
+  return (
+    <Tooltip title={link.label} placement="right">
+      <ListItemButton
+        component={NavLink}
+        to={link.path}
+        end={link.end}
+        selected={active}
+        sx={{
+          borderRadius: 2,
+          width: 44,
+          height: 44,
+          minHeight: 44,
+          flexShrink: 0,
+          justifyContent: 'center',
+          color: active ? '#fff' : 'inherit',
+          '&.Mui-selected': { background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.primary.dark})`, color: '#fff' },
+          '&:hover:not(.Mui-selected)': { backgroundColor: (t) => t.custom.sidebarHover },
+        }}
+      >
+        <Icon fontSize="small" />
+      </ListItemButton>
+    </Tooltip>
   )
 }

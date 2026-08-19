@@ -44,11 +44,9 @@ import EmptyState from '../../components/EmptyState'
 import AppDialog from '../../components/AppDialog'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
-import ExportExcelButton from '../../components/ExportExcelButton'
 import ImportExcelButton from '../../components/ImportExcelButton'
 import VehiculoFormFields from '../../components/VehiculoFormFields'
 import TicketDialog from '../../components/TicketDialog'
-import RowActionsMenu from '../../components/RowActionsMenu'
 import CobroDialog from '../../components/CobroDialog'
 import { waLink } from '../../utils/wa'
 import { plural, fmtMoney, fmtDate, parseNumero } from '../../utils/format'
@@ -308,14 +306,6 @@ export default function Clientes() {
     clientes.reload()
   }
 
-  const columns = [
-    { header: 'Cliente', key: 'nombre' },
-    { header: 'Teléfonos', key: 'telefonos', render: (c) => (c.telefonos ?? []).map((t) => t.telefono).join('; ') },
-    { header: 'Emails', key: 'emails', render: (c) => (c.emails ?? []).map((e) => e.email).join('; ') },
-    { header: 'Vehículos', key: 'vehiculos', render: (c) => (c.vehiculos ?? []).map((v) => `${v.marca} ${v.modelo} (${v.patente})`).join(', ') },
-    { header: 'Deuda', key: 'saldo_total', render: (c) => fmtMoney(c.saldo_total) },
-  ]
-
   return (
     <Box>
       <PageHeader
@@ -323,12 +313,6 @@ export default function Clientes() {
         subtitle="Base de datos de clientes y sus vehículos."
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <ExportExcelButton
-              filename="clientes"
-              sheetName="Clientes"
-              columns={columns}
-              rowsFetcher={async () => (await listClientes({ q: clientes.q, per_page: 5000 })).data}
-            />
             <ImportExcelButton onImport={handleImport} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openCliente(null, 'editar')}>
               Nuevo cliente
@@ -375,7 +359,7 @@ export default function Clientes() {
                 <TableCell>Emails</TableCell>
                 <TableCell align="center">Vehículos</TableCell>
                 <TableCell align="right">Deuda</TableCell>
-                <TableCell align="right">Acciones</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -585,7 +569,7 @@ function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar, mo
       <TableCell>
         <Stack spacing={0.5}>
           {(cliente.telefonos ?? []).map((t, i) => {
-            const waUrl = waLink(t.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Exe-Mecanica.`)
+            const waUrl = waLink(t.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Impulsa Motors.`)
             return (
               <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                 <IconButton
@@ -638,7 +622,7 @@ function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar, mo
           sx={{ fontWeight: 700 }}
         />
       </TableCell>
-      <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
         {mostrarAgendar && !cliente.tiene_turno && (
           <IconButton size="small" color="primary" onClick={onAgendar} aria-label="Agendar turno" title="Agendar turno" disabled={vehiculos.length === 0}>
             <CalendarMonthIcon fontSize="small" />
@@ -649,14 +633,15 @@ function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar, mo
             <PaymentsIcon fontSize="small" />
           </IconButton>
         )}
-        <RowActionsMenu
-          items={[
-            { label: 'Ver', icon: <VisibilityIcon fontSize="small" />, onClick: onView },
-            { label: 'Editar', icon: <EditIcon fontSize="small" />, onClick: onEdit },
-            { divider: true },
-            { label: 'Eliminar', icon: <DeleteIcon fontSize="small" />, onClick: onDelete, color: 'error' },
-          ]}
-        />
+        <IconButton size="small" onClick={onView} aria-label="Ver cliente" title="Ver">
+          <VisibilityIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" onClick={onEdit} aria-label="Editar cliente" title="Editar">
+          <EditIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" color="error" onClick={onDelete} aria-label="Eliminar cliente" title="Eliminar">
+          <DeleteIcon fontSize="small" />
+        </IconButton>
       </TableCell>
     </TableRow>
   )
@@ -666,7 +651,7 @@ function DetailCliente({ cliente, loading, onEdit, onDelete, onAddVeh, onEditVeh
   const vehiculos = cliente.vehiculos ?? []
   const deuda = Number(cliente.saldo_total ?? 0)
   const ordenesTotales = vehiculos.reduce((acc, v) => acc + (v.ordenesTrabajo?.length ?? 0), 0)
-  const waUrl = waLink(cliente.telefonos?.[0]?.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Exe-Mecanica.`)
+  const waUrl = waLink(cliente.telefonos?.[0]?.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Impulsa Motors.`)
   return (
     <>
       <Box

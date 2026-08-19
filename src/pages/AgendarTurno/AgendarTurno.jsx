@@ -313,7 +313,7 @@ export default function AgendarTurno() {
                 {(() => {
                   const wa = waLink(
                     turno.vehiculo?.cliente?.telefonos?.[0]?.telefono,
-                    `Hola, quiero confirmar mi turno en Exe-Mecanica para ${fmtDate(turno.fecha_hora)} a las ${fmtTime(turno.fecha_hora)} (${nombresTurno(turno)}).`
+                    `Hola, quiero confirmar mi turno en Impulsa Motors para ${fmtDate(turno.fecha_hora)} a las ${fmtTime(turno.fecha_hora)} (${nombresTurno(turno)}).`
                   )
                   return wa ? (
                     <Button component="a" href={wa} target="_blank" rel="noopener noreferrer" variant="contained" color="success" startIcon={<WhatsAppIcon />} fullWidth>
@@ -658,7 +658,7 @@ export default function AgendarTurno() {
               <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', justifyContent: 'center', mt: 3 }}>
                 <BuildIcon fontSize="small" color="text.secondary" />
                 <Typography variant="caption" color="text.secondary">
-                  Exe-Mecanica · Si necesitás ayuda, llamanos o escribinos por WhatsApp.
+                  Impulsa Motors · Si necesitás ayuda, llamanos o escribinos por WhatsApp.
                 </Typography>
               </Stack>
             </>

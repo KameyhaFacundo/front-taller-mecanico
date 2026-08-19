@@ -15,17 +15,6 @@ const normalizeKey = (key) =>
 // descarga cuando el usuario realmente exporta o importa un archivo.
 const loadXlsx = () => import('xlsx')
 
-export async function exportToExcel({ filename, sheetName = 'Datos', columns, rows }) {
-  const XLSX = await loadXlsx()
-  const header = columns.map((column) => column.header)
-  const data = rows.map((row) => columns.map((column) => column.render ? column.render(row) : row[column.key] ?? ''))
-  const worksheet = XLSX.utils.aoa_to_sheet([header, ...data])
-  worksheet['!cols'] = columns.map((column) => ({ wch: Math.max(column.header.length + 2, 14) }))
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
-  XLSX.writeFile(workbook, `${filename}.xlsx`)
-}
-
 export async function parseExcelFile(file) {
   const XLSX = await loadXlsx()
   const buffer = await file.arrayBuffer()

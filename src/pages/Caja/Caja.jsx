@@ -40,7 +40,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
 import TicketDialog from '../../components/TicketDialog'
 import SearchInput from '../../components/SearchInput'
-import ExportExcelButton from '../../components/ExportExcelButton'
+import { FlujoChart, MetodoDonut } from '../../components/CajaCharts'
 import { pagoMetodoMeta } from '../../utils/meta'
 import { fmtMoney, fmtDate, fmtDateTime, plural } from '../../utils/format'
 
@@ -72,19 +72,45 @@ export default function Caja() {
     errorMessage: 'No se pudieron cargar los movimientos.',
     extraParams: params,
   })
+  // Set completo del período (no paginado) solo para armar el gráfico de
+  // flujo: la tabla de abajo se sigue mostrando paginada.
+  const chartRows = useAsyncData(async (p) => (await listMovimientos(p ?? { ...params, per_page: 5000 })).data, { errorMessage: 'No se pudo cargar el gráfico de caja.' })
 
   const reload = () => {
     resumen.reload(params)
     cobros.reload()
     movimientos.reload()
+    chartRows.reload({ ...params, per_page: 5000 })
   }
 
   // cobros/movimientos re-fetch on their own whenever their extraParams
-  // change; resumen doesn't share that hook, so it needs its own trigger.
+  // change; resumen y chartRows no comparten ese hook, así que necesitan su
+  // propio trigger.
   useEffect(() => {
     resumen.reload(params)
+    chartRows.reload({ ...params, per_page: 5000 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rango])
+
+  // Agrupa los movimientos del período por día (rango "mes") o por mes (rango
+  // "todo", para no terminar con cientos de barras) sumando ingresos/egresos.
+  const flowData = useMemo(() => {
+    const rows = chartRows.data ?? []
+    const monthly = rango === 'todo'
+    const byBucket = new Map()
+    for (const m of rows) {
+      const d = new Date(m.fecha)
+      if (Number.isNaN(d.getTime())) continue
+      const key = monthly
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      if (!byBucket.has(key)) byBucket.set(key, { key, ingresos: 0, egresos: 0 })
+      const bucket = byBucket.get(key)
+      if (m.tipo === 'ingreso') bucket.ingresos += Number(m.monto)
+      else bucket.egresos += Number(m.monto)
+    }
+    return [...byBucket.values()].sort((a, b) => a.key.localeCompare(b.key))
+  }, [chartRows.data, rango])
 
   const confirmDelete = async () => {
     setDeleteBusy(true)
@@ -126,25 +152,6 @@ export default function Caja() {
 
   const r = resumen.data
 
-  const exportColumns = useMemo(
-    () =>
-      tab === 'cobros'
-        ? [
-            { header: 'Fecha', key: 'fecha', render: (m) => fmtDate(m.fecha) },
-            { header: 'Orden', key: 'orden', render: (m) => m.orden_trabajo?.id ?? '' },
-            { header: 'Cliente', key: 'cliente', render: (m) => m.orden_trabajo?.cliente?.nombre ?? m.orden_trabajo?.vehiculo?.cliente?.nombre ?? '' },
-            { header: 'Método', key: 'metodo', render: (m) => pagoMetodoMeta[m.metodo]?.label ?? m.metodo },
-            { header: 'Monto', key: 'monto', render: (m) => m.monto },
-          ]
-        : [
-            { header: 'Fecha', key: 'fecha', render: (m) => fmtDate(m.fecha) },
-            { header: 'Tipo', key: 'tipo', render: (m) => (m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso') },
-            { header: 'Detalle', key: 'detalle', render: (m) => (m.tipo === 'ingreso' ? (m.orden_trabajo?.cliente?.nombre ?? `Orden #${m.orden_trabajo?.id ?? ''}`) : (m.proveedor?.nombre ?? m.descripcion ?? 'Egreso')) },
-            { header: 'Monto', key: 'monto', render: (m) => m.monto },
-          ],
-    [tab]
-  )
-
   const activo = tab === 'cobros' ? cobros : movimientos
 
   return (
@@ -178,6 +185,23 @@ export default function Caja() {
       )}
 
       <Paper variant="outlined" sx={{ p: 2.5, mb: 3 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <Typography variant="h6">Ingresos y egresos</Typography>
+          <Stack direction="row" spacing={2} sx={{ ml: 'auto' }}>
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: 'success.main' }} />
+              <Typography variant="caption" color="text.secondary">Ingresos</Typography>
+            </Stack>
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: 'error.main' }} />
+              <Typography variant="caption" color="text.secondary">Egresos</Typography>
+            </Stack>
+          </Stack>
+        </Stack>
+        <FlujoChart data={flowData} loading={chartRows.loading} monthly={rango === 'todo'} />
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 2.5, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
           Ingresos por método
         </Typography>
@@ -191,21 +215,24 @@ export default function Caja() {
             Sin cobros registrados en el período.
           </Typography>
         ) : (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            {r.por_metodo.map((m) => (
-              <Box key={m.metodo} sx={{ flexGrow: 1, minWidth: 160, p: 2, borderRadius: 2, bgcolor: 'background.default', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: `${pagoMetodoMeta[m.metodo]?.color ?? 'primary'}.main` }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {pagoMetodoMeta[m.metodo]?.label ?? m.metodo}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} sx={{ alignItems: 'center' }}>
+            <MetodoDonut data={r.por_metodo} />
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, flexGrow: 1, width: '100%' }}>
+              {r.por_metodo.map((m) => (
+                <Box key={m.metodo} sx={{ flexGrow: 1, minWidth: 160, p: 2, borderRadius: 2, bgcolor: 'background.default', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: `${pagoMetodoMeta[m.metodo]?.color ?? 'primary'}.main` }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {pagoMetodoMeta[m.metodo]?.label ?? m.metodo}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                    {fmtMoney(m.total)}
                   </Typography>
-                </Stack>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                  {fmtMoney(m.total)}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
+                </Box>
+              ))}
+            </Box>
+          </Stack>
         )}
       </Paper>
 
@@ -228,15 +255,6 @@ export default function Caja() {
             placeholder={tab === 'cobros' ? 'Buscar por cliente o referencia…' : 'Buscar por detalle…'}
             width={{ xs: '100%', sm: 300 }}
           />
-          <ExportExcelButton
-            filename={tab === 'cobros' ? 'cobros' : 'movimientos-caja'}
-            sheetName={tab === 'cobros' ? 'Cobros' : 'Movimientos'}
-            columns={exportColumns}
-            rowsFetcher={async () => {
-              const extra = tab === 'cobros' ? { tipo: 'ingreso' } : {}
-              return (await listMovimientos({ q: activo.q || undefined, ...params, ...extra, per_page: 5000 })).data
-            }}
-          />
         </Stack>
       </Stack>
 
@@ -257,7 +275,7 @@ export default function Caja() {
                   <TableCell>Cliente</TableCell>
                   <TableCell>Método</TableCell>
                   <TableCell align="right">Monto</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -287,7 +305,7 @@ export default function Caja() {
                         {fmtMoney(pago.monto)}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
                       <IconButton size="small" onClick={() => setTicket(buildMovTicket(pago))} aria-label="Imprimir ticket">
                         <PrintIcon fontSize="small" />
                       </IconButton>
@@ -324,7 +342,7 @@ export default function Caja() {
                 <TableCell>Tipo</TableCell>
                 <TableCell>Detalle</TableCell>
                 <TableCell align="right">Monto</TableCell>
-                <TableCell align="right">Acciones</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -361,7 +379,7 @@ export default function Caja() {
                         {fmtMoney(m.monto)}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
                       {esMirror ? (
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                           <IconButton size="small" onClick={() => setTicket(buildMovTicket(m))} aria-label="Imprimir ticket">

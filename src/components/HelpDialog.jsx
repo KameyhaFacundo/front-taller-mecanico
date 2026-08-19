@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Box, Button, Chip, Divider, IconButton, Stack, Typography } from '@mui/material'
+import { Box, Button, Chip, Divider, IconButton, ListItemButton, ListItemIcon, ListItemText, Stack, Typography } from '@mui/material'
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
@@ -16,7 +16,7 @@ import { turnoEstadoMeta, ordenEstadoMeta } from '../utils/meta'
 
 // Guía del flujo completo del sistema. Se abre desde el botón "Ayuda" de la
 // barra superior y está disponible en todas las páginas del panel.
-export default function HelpDialog() {
+export default function HelpDialog({ variant = 'icon', sx } = {}) {
   const [open, setOpen] = useState(false)
 
   const Flujo = ({ pasos, meta }) => (
@@ -67,15 +67,27 @@ export default function HelpDialog() {
 
   return (
     <>
-      <IconButton
-        size="small"
-        onClick={() => setOpen(true)}
-        aria-label="Ayuda"
-        title="Ayuda"
-        sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
-      >
-        <HelpOutlineOutlinedIcon fontSize="small" />
-      </IconButton>
+      {variant === 'menuItem' ? (
+        <ListItemButton
+          onClick={() => setOpen(true)}
+          sx={{ borderRadius: 2, mb: 0.5, minHeight: 44, color: 'inherit', '&:hover': { backgroundColor: 'rgba(255,255,255,0.06)' }, ...sx }}
+        >
+          <ListItemIcon sx={{ minWidth: 0, mr: 1.25, color: 'inherit' }}>
+            <HelpOutlineOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Ayuda" slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 600 } } }} />
+        </ListItemButton>
+      ) : (
+        <IconButton
+          size="small"
+          onClick={() => setOpen(true)}
+          aria-label="Ayuda"
+          title="Ayuda"
+          sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' }, ...sx }}
+        >
+          <HelpOutlineOutlinedIcon fontSize="small" />
+        </IconButton>
+      )}
 
       <AppDialog
         open={open}

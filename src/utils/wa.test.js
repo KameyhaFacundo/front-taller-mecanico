@@ -35,7 +35,7 @@ describe('waMensajeOrden', () => {
     expect(msg).toContain('Ana')
     expect(msg).toContain('Fiat Argo AB123CD')
     expect(msg).toContain('#7')
-    expect(msg).toContain('En ejecución')
+    expect(msg).toContain('estamos trabajando en tu vehículo')
   })
 
   it('tolera ordenes sin vehículo cargado', () => {
