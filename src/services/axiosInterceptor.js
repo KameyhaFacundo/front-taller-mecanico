@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient'
 
-const PUBLIC_URL_PATTERNS = ['/auth/login', '/auth/register', '/publico/']
+const PUBLIC_URL_PATTERNS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/publico/']
 
 axiosClient.interceptors.request.use((config) => {
   const isPublic = PUBLIC_URL_PATTERNS.some((pattern) => config.url?.includes(pattern))

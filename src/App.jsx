@@ -5,6 +5,8 @@ import ProtectedLayout from './layout/ProtectedLayout'
 import RequireAdmin from './auth/RequireAdmin'
 import RequireSuperadmin from './auth/RequireSuperadmin'
 import Login from './pages/Login/Login'
+import ForgotPassword from './pages/Login/ForgotPassword'
+import ResetPassword from './pages/Login/ResetPassword'
 import Forbidden from './pages/Forbidden/Forbidden'
 import Registro from './pages/Registro/Registro'
 import SeleccionarTaller from './pages/SeleccionarTaller/SeleccionarTaller'
@@ -45,6 +47,8 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/taller/:tallerSlug" element={<TallerLanding />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/olvide-password" element={<ForgotPassword />} />
+        <Route path="/restablecer-password" element={<ResetPassword />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/terminos" element={<Terminos />} />
         <Route path="/privacidad" element={<Privacidad />} />

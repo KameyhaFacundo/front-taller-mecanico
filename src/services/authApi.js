@@ -21,3 +21,13 @@ export async function updatePasswordApi(payload) {
   const response = await axiosClient.put('/auth/password', payload)
   return response.data
 }
+
+export async function forgotPasswordApi(email) {
+  const response = await axiosClient.post('/auth/forgot-password', { email })
+  return response.data
+}
+
+export async function resetPasswordApi(payload) {
+  const response = await axiosClient.post('/auth/reset-password', payload)
+  return response.data
+}

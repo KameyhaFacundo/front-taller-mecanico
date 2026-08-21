@@ -204,6 +204,16 @@ export default function Login() {
                       },
                     }}
                   />
+                  <Box sx={{ textAlign: 'right', mt: -1 }}>
+                    <Typography
+                      component={RouterLink}
+                      to="/olvide-password"
+                      variant="caption"
+                      sx={{ color: textSecondary, textDecoration: 'none', '&:hover': { color: 'primary.main', textDecoration: 'underline' } }}
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </Typography>
+                  </Box>
                   <Button type="submit" variant="contained" size="large" fullWidth disabled={submitting}>
                     {submitting ? 'Ingresando…' : 'Ingresar al panel'}
                   </Button>
