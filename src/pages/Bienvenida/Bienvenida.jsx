@@ -89,7 +89,7 @@ export default function Bienvenida() {
                     <Box sx={{ width: 52, height: 52, borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: SAFETY, color: '#fff', flexShrink: 0, transform: 'rotate(-3deg)', boxShadow: '0 3px 0 rgba(0,0,0,0.15)' }}>
                       <Icono fontSize="medium" />
                     </Box>
-                    <Box sx={{ flex: 1 }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
                         <Typography sx={{ fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700, color: SAFETY, letterSpacing: '0.08em' }}>
                           PASO {paso.numero}
@@ -98,12 +98,27 @@ export default function Bienvenida() {
                       <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{paso.titulo}</Typography>
                       <Typography variant="body2" sx={{ color: textSecondary }}>{paso.descripcion}</Typography>
                       {esLink && linkPublico && (
-                        <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'center' }}>
-                          <Typography sx={{ fontFamily: FONT_MONO, fontSize: 12, color: textSecondary, bgcolor: dark ? 'rgba(255,255,255,0.05)' : 'rgba(24,20,15,0.05)', px: 1.5, py: 0.75, borderRadius: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: { xs: '100%', sm: 360 } }}>
+                        <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'center', minWidth: 0 }}>
+                          <Typography
+                            sx={{
+                              fontFamily: FONT_MONO,
+                              fontSize: 12,
+                              color: textSecondary,
+                              bgcolor: dark ? 'rgba(255,255,255,0.05)' : 'rgba(24,20,15,0.05)',
+                              px: 1.5,
+                              py: 0.75,
+                              borderRadius: 1,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              minWidth: 0,
+                              flex: '1 1 auto',
+                            }}
+                          >
                             {linkPublico}
                           </Typography>
                           <Tooltip title={copiado ? 'Copiado' : 'Copiar link'}>
-                            <IconButton size="small" onClick={copiarLink} sx={{ color: SAFETY, border: '1px solid', borderColor: SAFETY, borderRadius: 1 }}>
+                            <IconButton size="small" onClick={copiarLink} sx={{ color: SAFETY, border: '1px solid', borderColor: SAFETY, borderRadius: 1, flexShrink: 0 }}>
                               <ContentCopyIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
