@@ -87,7 +87,22 @@ export default function MarcaAutocomplete({ value, onChange, required = false, a
         )
       }
       renderInput={(params) => (
-        <TextField {...params} label="Marca" placeholder="Elegí o escribí una marca…" required={required} autoFocus={autoFocus} />
+        <TextField
+          {...params}
+          label="Marca"
+          placeholder="Elegí o escribí una marca…"
+          required={required}
+          autoFocus={autoFocus}
+          helperText={
+            marcas.loading
+              ? 'Cargando marcas…'
+              : marcas.error
+                ? 'No se pudieron cargar las marcas. Podés escribirla manualmente.'
+                : publico && nombres.length === 0
+                  ? 'Podés escribir la marca si no está en la lista.'
+                  : undefined
+          }
+        />
       )}
     />
   )

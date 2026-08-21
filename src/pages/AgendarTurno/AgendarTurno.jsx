@@ -43,12 +43,34 @@ import { fmtDate, fmtDateTime, fmtMoney, fmtTime, fmtWeekdayShort } from '../../
 import { waLink, waMensajeTurno } from '../../utils/wa'
 import { SAFETY, FONT_DISPLAY, pegboard, getWorkshopTheme } from '../../theme/workshopBrand'
 
-const PASOS = ['Tus datos', 'Tu vehículo', 'Servicio y horario', 'Confirmación']
+const PASOS = [
+  { label: 'Tus datos', icon: PersonIcon },
+  { label: 'Tu vehículo', icon: DirectionsCarIcon },
+  { label: 'Servicio y horario', icon: CalendarMonthIcon },
+  { label: 'Confirmación', icon: CheckCircleIcon },
+]
+
+function PasoIcon({ icon: stepNumber, active, completed }) {
+  const paso = PASOS[Number(stepNumber) - 1]
+  const Icon = paso?.icon ?? PersonIcon
+  return <Icon color={active ? 'primary' : completed ? 'success' : 'disabled'} />
+}
 
 const emptyForm = { nombre: '', telefono: '', marca: '', modelo: '', patente: '', servicios: [], fecha: '', hora: '', otroActivo: false, otroServicio: '' }
 
 const pad = (n) => String(n).padStart(2, '0')
 const aISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const normalizarHueco = (h) => {
+  if (h == null) return null
+  if (typeof h === 'string') {
+    const match = h.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+    if (match) return `${match[1].padStart(2, '0')}:${match[2]}`
+  }
+  if (typeof h === 'object') {
+    return normalizarHueco(h.hora ?? h.inicio ?? h.time ?? h.value)
+  }
+  return null
+}
 
 export default function AgendarTurno() {
   const { tallerSlug } = useParams()
@@ -98,8 +120,19 @@ export default function AgendarTurno() {
     try {
       const res = await listDisponibilidadPublica({ fecha, tallerSlug, ...params })
       if (seq !== huecosSeqRef.current) return
+      const rawHuecos = Array.isArray(res?.huecos) ? res.huecos : []
+      const normalizados = rawHuecos
+        .map(normalizarHueco)
+        .filter(Boolean)
+        .filter((h, i, arr) => arr.indexOf(h) === i)
+      const hoyIso = aISO(new Date())
       const min = Date.now() + 60 * 60 * 1000
-      setHuecos((res?.huecos ?? []).filter((h) => new Date(`${fecha}T${h}:00`).getTime() >= min))
+      setHuecos(
+        normalizados.filter((h) => {
+          if (fecha !== hoyIso) return true
+          return new Date(`${fecha}T${h}:00`).getTime() >= min
+        })
+      )
     } catch {
       if (seq !== huecosSeqRef.current) return
       setHuecos([])
@@ -398,9 +431,14 @@ export default function AgendarTurno() {
               </Stack>
 
               <Stepper activeStep={step} sx={{ mb: 3, overflowX: 'auto' }}>
-                {PASOS.map((label) => (
+                {PASOS.map(({ label }) => (
                   <Step key={label}>
-                    <StepLabel>{label}</StepLabel>
+                    <StepLabel
+                      slots={{ stepIcon: PasoIcon }}
+                      slotProps={{ label: { sx: { display: { xs: 'none', sm: 'block' } } } }}
+                    >
+                      {label}
+                    </StepLabel>
                   </Step>
                 ))}
               </Stepper>
@@ -463,7 +501,7 @@ export default function AgendarTurno() {
                       <Stack spacing={2}>
                         <MarcaAutocomplete
                           value={form.marca}
-                          onChange={(v) => setForm((prev) => ({ ...prev, marca: v }))}
+                          onChange={(v) => setForm((prev) => ({ ...prev, marca: v, modelo: '' }))}
                           required
                           fullWidth
                           publico

@@ -34,6 +34,7 @@ export default function ModeloAutocomplete({ marca, value, onChange, required = 
     .map((m) => m.nombre)
 
   const existe = (v) => opciones.some((n) => n.toLowerCase() === String(v ?? '').toLowerCase())
+  const disabled = !String(marca ?? '').trim()
 
   const crear = async (v) => {
     const nombre = String(v ?? '').trim()
@@ -66,7 +67,8 @@ export default function ModeloAutocomplete({ marca, value, onChange, required = 
       // autoSelect: mismo fix que en MarcaAutocomplete — sin esto, tipear sin
       // elegir la sugerencia del desplegable dejaba el campo sin valor real.
       autoSelect
-      options={opciones}
+      disabled={disabled}
+      options={disabled ? [] : opciones}
       value={value ?? ''}
       inputValue={input}
       onInputChange={(_, nuevo) => setInput(nuevo ?? '')}
@@ -94,8 +96,19 @@ export default function ModeloAutocomplete({ marca, value, onChange, required = 
         <TextField
           {...params}
           label="Modelo"
-          placeholder={opciones.length ? 'Elegí el modelo…' : 'Escribí el modelo…'}
+          placeholder={disabled ? 'Elegí primero la marca…' : opciones.length ? 'Elegí el modelo…' : 'Escribí el modelo…'}
           required={required}
+          helperText={
+            disabled
+              ? 'Elegí primero la marca'
+              : modelos.loading
+                ? 'Cargando modelos…'
+                : modelos.error
+                  ? 'No se pudieron cargar los modelos. Podés escribirlo manualmente.'
+                  : publico && opciones.length === 0
+                    ? 'Podés escribir el modelo si no está en la lista.'
+                    : undefined
+          }
         />
       )}
     />

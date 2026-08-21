@@ -42,6 +42,10 @@ import { useNotify } from '../../context/useNotify'
 import { fmtDate, fmtMoney } from '../../utils/format'
 import { FONT_DISPLAY, FONT_MONO, SAFETY } from '../../theme/workshopBrand'
 
+// Los talleres creados antes de agregar el campo `activo` no lo envían.
+// Se asume activo salvo que el backend indique explícitamente `false`.
+const esActivo = (taller) => taller.activo !== false
+
 function StatCard({ icon: Icon, label, value, color = SAFETY, suffix = null }) {
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>
@@ -85,8 +89,8 @@ export default function SuperadminTalleres() {
   const totals = data.reduce(
     (acc, t) => {
       acc.talleres += 1
-      acc.activos += t.activo ? 1 : 0
-      acc.pausados += t.activo ? 0 : 1
+      acc.activos += esActivo(t) ? 1 : 0
+      acc.pausados += esActivo(t) ? 0 : 1
       acc.usuarios += t.usuarios_count ?? 0
       acc.clientes += t.clientes_count ?? 0
       acc.ordenes += t.ordenes_count ?? 0
@@ -218,7 +222,7 @@ export default function SuperadminTalleres() {
               </TableHead>
               <TableBody>
                 {filtered.map((taller) => (
-                  <TableRow key={taller.id} hover sx={{ opacity: taller.activo ? 1 : 0.6 }}>
+                  <TableRow key={taller.id} hover sx={{ opacity: esActivo(taller) ? 1 : 0.6 }}>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 700 }}>
                         {taller.nombre}
@@ -256,22 +260,22 @@ export default function SuperadminTalleres() {
                     </TableCell>
                     <TableCell align="right">
                       <Chip
-                        label={taller.activo ? 'Activo' : 'Pausado'}
+                        label={esActivo(taller) ? 'Activo' : 'Pausado'}
                         size="small"
-                        color={taller.activo ? 'success' : 'default'}
-                        variant={taller.activo ? 'filled' : 'outlined'}
+                        color={esActivo(taller) ? 'success' : 'default'}
+                        variant={esActivo(taller) ? 'filled' : 'outlined'}
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Tooltip title={taller.activo ? 'Pausar taller' : 'Reactivar taller'}>
+                      <Tooltip title={esActivo(taller) ? 'Pausar taller' : 'Reactivar taller'}>
                         <span>
                           <IconButton
                             size="small"
                             onClick={() => handleToggle(taller)}
                             disabled={togglingId === taller.id}
-                            color={taller.activo ? 'warning' : 'success'}
+                            color={esActivo(taller) ? 'warning' : 'success'}
                           >
-                            {taller.activo ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+                            {esActivo(taller) ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
                           </IconButton>
                         </span>
                       </Tooltip>
@@ -292,10 +296,10 @@ export default function SuperadminTalleres() {
           {/* Mobile: cards */}
           <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
             {filtered.map((taller) => (
-              <Card key={taller.id} variant="outlined" sx={{ opacity: taller.activo ? 1 : 0.7 }}>
+              <Card key={taller.id} variant="outlined" sx={{ opacity: esActivo(taller) ? 1 : 0.7 }}>
                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                   <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', mb: 1.5 }}>
-                    <Box sx={{ width: 40, height: 40, borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: taller.activo ? SAFETY : '#9ca3af', color: '#fff', flexShrink: 0 }}>
+                    <Box sx={{ width: 40, height: 40, borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: esActivo(taller) ? SAFETY : '#9ca3af', color: '#fff', flexShrink: 0 }}>
                       <StorefrontIcon fontSize="small" />
                     </Box>
                     <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -307,10 +311,10 @@ export default function SuperadminTalleres() {
                       </Typography>
                     </Box>
                     <Chip
-                      label={taller.activo ? 'Activo' : 'Pausado'}
+                      label={esActivo(taller) ? 'Activo' : 'Pausado'}
                       size="small"
-                      color={taller.activo ? 'success' : 'default'}
-                      variant={taller.activo ? 'filled' : 'outlined'}
+                      color={esActivo(taller) ? 'success' : 'default'}
+                      variant={esActivo(taller) ? 'filled' : 'outlined'}
                     />
                   </Stack>
 
@@ -358,13 +362,13 @@ export default function SuperadminTalleres() {
                   <Button
                     fullWidth
                     size="small"
-                    variant={taller.activo ? 'outlined' : 'contained'}
-                    color={taller.activo ? 'warning' : 'success'}
-                    startIcon={taller.activo ? <PauseIcon /> : <PlayArrowIcon />}
+                    variant={esActivo(taller) ? 'outlined' : 'contained'}
+                    color={esActivo(taller) ? 'warning' : 'success'}
+                    startIcon={esActivo(taller) ? <PauseIcon /> : <PlayArrowIcon />}
                     onClick={() => handleToggle(taller)}
                     disabled={togglingId === taller.id}
                   >
-                    {taller.activo ? 'Pausar taller' : 'Reactivar taller'}
+                    {esActivo(taller) ? 'Pausar taller' : 'Reactivar taller'}
                   </Button>
                 </CardContent>
               </Card>
