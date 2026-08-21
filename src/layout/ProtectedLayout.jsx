@@ -6,6 +6,8 @@ import {
   Avatar,
   Box,
   Button,
+  ButtonBase,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -21,6 +23,7 @@ import {
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import LogoutIcon from '@mui/icons-material/Logout'
 import SpeedIcon from '@mui/icons-material/Speed'
 import PeopleIcon from '@mui/icons-material/People'
@@ -53,6 +56,7 @@ import { SAFETY, SAFETY_DEEP, FONT_MONO, pegboard, getWorkshopTheme } from '../t
 const DRAWER_WIDTH = 228
 const RAIL_WIDTH = 84
 const SIDEBAR_STORAGE_KEY = 'sidebarOpen'
+const SIDEBAR_COLLAPSED_SECTIONS_KEY = 'sidebarCollapsedSections'
 
 const sections = [
   { key: 'panel', icon: SpeedIcon, label: 'Panel', path: '/panel', end: true },
@@ -98,11 +102,25 @@ export default function ProtectedLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [desktopOpen, setDesktopOpen] = useState(() => localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'false')
   const [userMenuAnchor, setUserMenuAnchor] = useState(null)
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(SIDEBAR_COLLAPSED_SECTIONS_KEY)) ?? {}
+    } catch {
+      return {}
+    }
+  })
   useTokenExpirationCheck()
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(desktopOpen))
   }, [desktopOpen])
+
+  const toggleSection = (key) =>
+    setCollapsedSections((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      localStorage.setItem(SIDEBAR_COLLAPSED_SECTIONS_KEY, JSON.stringify(next))
+      return next
+    })
 
   const allSections = useMemo(() => {
     let result = sections
@@ -179,12 +197,37 @@ export default function ProtectedLayout() {
         {allSections.map((section) =>
           section.children ? (
             <Box key={section.key} sx={{ mb: 1 }}>
-              <Typography sx={{ px: 1.5, pt: 1, pb: 0.5, display: 'block', opacity: 0.55, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                {section.label}
-              </Typography>
-              {section.children.map((child) => (
-                <NavItem key={child.path} link={child} active={isPathActive(child.path)} onNavigate={onNavigate} />
-              ))}
+              <ButtonBase
+                onClick={() => toggleSection(section.key)}
+                sx={{
+                  width: '100%',
+                  px: 1.5,
+                  pt: 1,
+                  pb: 0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderRadius: 1,
+                  '&:hover': { opacity: 0.85 },
+                }}
+              >
+                <Typography sx={{ opacity: 0.55, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  {section.label}
+                </Typography>
+                <ExpandMoreIcon
+                  sx={{
+                    fontSize: 16,
+                    opacity: 0.5,
+                    transition: 'transform 0.15s ease',
+                    transform: collapsedSections[section.key] ? 'rotate(-90deg)' : 'none',
+                  }}
+                />
+              </ButtonBase>
+              <Collapse in={!collapsedSections[section.key]} timeout="auto">
+                {section.children.map((child) => (
+                  <NavItem key={child.path} link={child} active={isPathActive(child.path)} onNavigate={onNavigate} />
+                ))}
+              </Collapse>
             </Box>
           ) : (
             <NavItem key={section.key} link={section} active={isSectionActive(section)} onNavigate={onNavigate} />
