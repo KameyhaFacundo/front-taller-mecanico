@@ -395,7 +395,7 @@ export default function Presupuestos() {
         onClose={() => setOpen(false)}
         maxWidth="md"
         title={form.id ? `Editar presupuesto #${form.id}` : 'Nuevo presupuesto'}
-        subtitle="Cotizá los trabajos de una moto con sus items y precio final."
+        subtitle="Cotizá los trabajos de un vehículo con sus items y precio final."
         icon={<RequestQuoteIcon />}
         iconBg="primary.main"
         actions={

@@ -364,7 +364,16 @@ export default function Compras() {
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField label="Fecha" name="fecha" type="date" value={form.fecha} onChange={handleChange} required fullWidth InputLabelProps={{ shrink: true }} />
+                <TextField
+                  label="Fecha"
+                  name="fecha"
+                  type="date"
+                  value={form.fecha}
+                  onChange={handleChange}
+                  required
+                  fullWidth
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
                 <TextField select label="Estado de pago" name="estado_pago" value={form.estado_pago} onChange={handleChange} sx={{ width: { xs: '100%', sm: 180 } }}>
                   {Object.entries(compraEstadoMeta).map(([estado, meta]) => (
                     <MenuItem key={estado} value={estado}>
