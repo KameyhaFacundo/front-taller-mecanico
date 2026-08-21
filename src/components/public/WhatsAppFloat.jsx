@@ -1,9 +1,9 @@
 import { Box } from '@mui/material'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
-import { waLinkTaller } from '../../utils/wa'
+import { waLink } from '../../utils/wa'
 
-export default function WhatsAppFloat({ mensaje = 'Hola 👋, quiero consultar por el taller.' }) {
-  const url = waLinkTaller(mensaje)
+export default function WhatsAppFloat({ telefono, mensaje = 'Hola 👋, quiero consultar por el taller.' }) {
+  const url = waLink(telefono, mensaje)
   if (!url) return null
 
   return (

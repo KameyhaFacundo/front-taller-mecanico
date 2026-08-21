@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ThemeProvider } from '@mui/material/styles'
 import {
   Avatar,
   Box,
@@ -13,7 +14,6 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-  useTheme,
 } from '@mui/material'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import ConstructionIcon from '@mui/icons-material/Construction'
@@ -28,10 +28,12 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import { getDashboard } from '../../services/dashboardApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { useAuth } from '../../hooks/useAuth'
+import { useColorMode } from '../../context/useColorMode'
 import StatCard from '../../components/StatCard'
 import EmptyState from '../../components/EmptyState'
 import { fmtMoney, fmtDate, fmtDayName, initials } from '../../utils/format'
 import { turnoOrigenMeta } from '../../utils/meta'
+import { getWorkshopTheme, SAFETY, SAFETY_DEEP, FONT_DISPLAY } from '../../theme/workshopBrand'
 
 function saludo() {
   const hour = new Date().getHours()
@@ -78,7 +80,8 @@ function DashboardSkeleton() {
 }
 
 export default function Dashboard() {
-  const theme = useTheme()
+  const { mode } = useColorMode()
+  const workshopTheme = getWorkshopTheme(mode)
   const navigate = useNavigate()
   const { user } = useAuth()
   const [rango, setRango] = useState('semana')
@@ -94,7 +97,11 @@ export default function Dashboard() {
   const data = dashboard.data ?? {}
 
   if (dashboard.loading) {
-    return <DashboardSkeleton />
+    return (
+      <ThemeProvider theme={workshopTheme}>
+        <DashboardSkeleton />
+      </ThemeProvider>
+    )
   }
 
   const stats = data.stats ?? {}
@@ -114,6 +121,7 @@ export default function Dashboard() {
   ]
 
   return (
+    <ThemeProvider theme={workshopTheme}>
     <Box>
       <Card
         sx={{
@@ -121,12 +129,15 @@ export default function Dashboard() {
           position: 'relative',
           overflow: 'hidden',
           color: '#fff',
-          background: (t) => t.custom.brandGradient,
+          // Un solo backgroundImage con las dos capas (puntos + degradé):
+          // combinar el shorthand `background` con el `backgroundImage` de
+          // pegboard() pisa el degradé por completo, porque el longhand
+          // declarado después gana la cascada.
+          backgroundImage: `radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1.4px), linear-gradient(135deg, ${SAFETY} 0%, ${SAFETY_DEEP} 100%)`,
+          backgroundSize: '18px 18px, auto',
           boxShadow: (t) => t.custom.shadowHover,
         }}
       >
-        <Box sx={{ position: 'absolute', top: -70, right: -40, width: 240, height: 240, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.08)' }} />
-        <Box sx={{ position: 'absolute', bottom: -90, right: 160, width: 180, height: 180, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.06)' }} />
         <CardContent sx={{ p: { xs: 2.5, sm: 3 }, position: 'relative' }}>
           <Stack direction={{ xs: 'column', md: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { md: 'center' }, gap: 2 }}>
             <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
@@ -134,7 +145,7 @@ export default function Dashboard() {
                 {initials(user?.name) || '?'}
               </Avatar>
               <Box>
-                <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700 }}>
+                <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em', fontSize: '1.6rem', color: '#fff', lineHeight: 1.05 }}>
                   {saludo()}
                   {user?.name ? `, ${user.name.split(' ')[0]}` : ''}
                 </Typography>
@@ -170,13 +181,18 @@ export default function Dashboard() {
           <StatCard label="Turnos hoy" value={stats.turnos_hoy ?? 0} icon={CalendarMonthIcon} color="primary" onClick={() => navigate('/turnos')} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard label="Órdenes en ejecución" value={stats.en_ejecucion ?? 0} icon={ConstructionIcon} color="warning" onClick={() => navigate('/ordenes')} />
+          {/* Mismo color que la columna "en ejecución" del tablero de abajo
+              — antes decía "primary" acá y "warning" allá para el mismo
+              estado, dos colores distintos para un mismo concepto. */}
+          <StatCard label="Órdenes en ejecución" value={stats.en_ejecucion ?? 0} icon={ConstructionIcon} color="primary" onClick={() => navigate('/ordenes')} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard label="Por asignar" value={stats.sin_asignar ?? 0} icon={HourglassEmptyIcon} color="warning" onClick={() => navigate('/turnos')} />
+          {/* El color ahora refleja si hay algo pendiente de asignar, en vez
+              de mostrarse siempre en "warning" incluso cuando el valor es 0. */}
+          <StatCard label="Por asignar" value={stats.sin_asignar ?? 0} icon={HourglassEmptyIcon} color={(stats.sin_asignar ?? 0) > 0 ? 'warning' : 'success'} onClick={() => navigate('/turnos')} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <StatCard label="Saldo por cobrar" value={fmtMoney(totalPendiente)} icon={PaymentsIcon} color="success" onClick={() => navigate('/ordenes')} />
+          <StatCard label="Saldo por cobrar" value={fmtMoney(totalPendiente)} icon={PaymentsIcon} color={totalPendiente > 0 ? 'warning' : 'success'} onClick={() => navigate('/ordenes')} />
         </Grid>
       </Grid>
 
@@ -185,7 +201,7 @@ export default function Dashboard() {
           <Card variant="outlined" sx={{ height: '100%' }}>
             <CardContent>
               <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1, mb: 1 }}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
                   <CalendarMonthIcon color="primary" />
                   {RANGO_LABEL[rango]}
                 </Typography>
@@ -241,7 +257,7 @@ export default function Dashboard() {
         <Grid size={{ xs: 12, lg: 4 }}>
           <Card variant="outlined" sx={{ height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
                 <WarningAmberIcon color="warning" />
                 Alertas
               </Typography>
@@ -354,7 +370,7 @@ export default function Dashboard() {
         <Grid size={12}>
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
                 <ConstructionIcon color="primary" />
                 Órdenes de trabajo
               </Typography>
@@ -362,7 +378,7 @@ export default function Dashboard() {
                 {columns.map((column) => {
                   const Icon = column.icon
                   const items = ordenes[column.key] ?? []
-                  const color = theme.palette[column.color]?.main
+                  const color = workshopTheme.palette[column.color]?.main
                   return (
                     <Box key={column.key} sx={{ bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'background.default'), borderRadius: 2, p: 1.5, minWidth: 0 }}>
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5 }}>
@@ -378,23 +394,32 @@ export default function Dashboard() {
                           </Typography>
                         </Box>
                       </Stack>
-                      <Stack spacing={1}>
+                      <Stack spacing={0.5}>
                         {items.slice(0, 6).map((orden) => (
-                          <Card key={orden.id} variant="outlined" onClick={() => navigate('/ordenes')} sx={{ cursor: 'pointer', '&:hover': { boxShadow: 'none' } }}>
-                            <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }} noWrap>
-                                {orden.cliente}
+                          <Box
+                            key={orden.id}
+                            onClick={() => navigate('/ordenes')}
+                            sx={{
+                              p: 1.25,
+                              borderRadius: 1.5,
+                              cursor: 'pointer',
+                              bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff'),
+                              transition: 'background-color 0.15s ease',
+                              '&:hover': { bgcolor: 'action.hover' },
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }} noWrap>
+                              {orden.cliente}
+                            </Typography>
+                            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 0.75, mt: 0.25 }}>
+                              <Typography variant="caption" color="text.secondary" noWrap>
+                                {orden.vehiculo}
                               </Typography>
-                              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 0.75, mt: 0.25 }}>
-                                <Typography variant="caption" color="text.secondary" noWrap>
-                                  {orden.vehiculo}
-                                </Typography>
-                                {orden.asignado && (
-                                  <Chip size="small" label={orden.asignado} variant="outlined" sx={{ height: 18, fontSize: 11, flexShrink: 0 }} />
-                                )}
-                              </Stack>
-                            </CardContent>
-                          </Card>
+                              {orden.asignado && (
+                                <Chip size="small" label={orden.asignado} variant="outlined" sx={{ height: 18, fontSize: 11, flexShrink: 0 }} />
+                              )}
+                            </Stack>
+                          </Box>
                         ))}
                         {items.length === 0 && (
                           <Box sx={{ py: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1.5, textAlign: 'center' }}>
@@ -418,5 +443,6 @@ export default function Dashboard() {
         </Grid>
       </Grid>
     </Box>
+    </ThemeProvider>
   )
 }

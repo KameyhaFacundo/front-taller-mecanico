@@ -1,295 +1,411 @@
 import { Link as RouterLink, Navigate } from 'react-router-dom'
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Box,
-  Button,
-  Chip,
-  Container,
-  Divider,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Box, Button, Container, Drawer, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material'
+import Accordion from '@mui/material/Accordion'
+import AccordionSummary from '@mui/material/AccordionSummary'
+import AccordionDetails from '@mui/material/AccordionDetails'
 import BuildIcon from '@mui/icons-material/Build'
-import TroubleshootIcon from '@mui/icons-material/Troubleshoot'
-import SpeedIcon from '@mui/icons-material/Speed'
-import EngineeringIcon from '@mui/icons-material/Engineering'
-import TuneIcon from '@mui/icons-material/Tune'
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
-import TwoWheelerIcon from '@mui/icons-material/TwoWheeler'
-import EventAvailableIcon from '@mui/icons-material/EventAvailable'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import StarIcon from '@mui/icons-material/Star'
-import ScheduleIcon from '@mui/icons-material/Schedule'
-import LocationOnIcon from '@mui/icons-material/LocationOn'
-import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import MapIcon from '@mui/icons-material/Map'
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import PeopleIcon from '@mui/icons-material/People'
+import Inventory2Icon from '@mui/icons-material/Inventory2'
+import PaymentsIcon from '@mui/icons-material/Payments'
+import StorefrontIcon from '@mui/icons-material/Storefront'
+import WhatsAppIcon from '@mui/icons-material/WhatsApp'
+import DarkModeIcon from '@mui/icons-material/DarkModeOutlined'
+import LightModeIcon from '@mui/icons-material/LightModeOutlined'
+import TwoWheelerIcon from '@mui/icons-material/TwoWheeler'
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
+import PedalBikeIcon from '@mui/icons-material/PedalBike'
+import LocalShippingIcon from '@mui/icons-material/LocalShipping'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import CheckIcon from '@mui/icons-material/Check'
+import AddIcon from '@mui/icons-material/Add'
+import MenuIcon from '@mui/icons-material/Menu'
+import CloseIcon from '@mui/icons-material/Close'
+import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useColorMode } from '../../context/useColorMode'
-import { waLinkTaller } from '../../utils/wa'
-import PublicHeader from '../../components/public/PublicHeader'
-import PublicFooter from '../../components/public/PublicFooter'
-import WhatsAppFloat from '../../components/public/WhatsAppFloat'
 import Reveal from '../../components/Reveal'
+import TicketTag from '../../components/TicketTag'
+import { INK, INK_SURFACE, CONCRETE, BAND, PAPER, PAPER_DARK, SAFETY, SAFETY_DEEP, HAZARD, STEEL, FONT_DISPLAY, FONT_MONO, pegboard, btnSx } from '../../theme/workshopBrand'
 
-const DIRECCION = 'Ruta 321 Km 7, El Naranjo, Tucumán'
-const MAPS_QUERY = encodeURIComponent(DIRECCION)
-const MAPS_EMBED = `https://maps.google.com/maps?q=${MAPS_QUERY}&t=&z=15&ie=UTF8&iwloc=&output=embed`
-const MAPS_LINK = `https://www.google.com/maps/search/?api=1&query=${MAPS_QUERY}`
+// Landing general del producto — a diferencia de /taller/:tallerSlug (la página
+// pública de CADA taller, con sus datos reales), esta no llama al backend:
+// no hay ningún taller "actual" acá, así que no hay nada que traer.
+//
+// Identidad propia, distinta del azul del panel interno: esta página vende
+// el producto en sí (no representa a ningún taller puntual), así que toma
+// prestado el vocabulario visual de un taller real — orden de trabajo,
+// ticket perforado, sello de "en taller", naranja de seguridad — en vez
+// de la estética SaaS genérica (gradiente índigo/violeta + mockup de panel).
+// Tokens compartidos con Login/Registro en src/theme/workshopBrand.js.
 
-const NAV_LINKS = [
-  { label: 'Servicios', id: 'servicios' },
-  { label: 'Cómo funciona', id: 'como-funciona' },
-  { label: 'Trabajos', id: 'trabajos' },
-  { label: 'Preguntas', id: 'faq' },
-  { label: 'Contacto', id: 'ubicacion' },
-]
-
-const servicios = [
-  { icon: BuildIcon, titulo: 'Service completo', descripcion: 'Cambio de aceite, filtros y puesta a punto general para que tu moto ande como nueva.' },
-  { icon: TroubleshootIcon, titulo: 'Diagnóstico y electrónica', descripcion: 'Detección de fallas en el sistema eléctrico, arranque, tablero y batería.' },
-  { icon: SpeedIcon, titulo: 'Frenos', descripcion: 'Pastillas, zapatas, discos y purgado del circuito para frenar seguro.' },
-  { icon: EngineeringIcon, titulo: 'Cadena y transmisión', descripcion: 'Ajuste, lubricación y cambio de kit de arrastre para no quedarte a mitad de camino.' },
-  { icon: AutoFixHighIcon, titulo: 'Cubiertas y cámaras', descripcion: 'Cambio de neumáticos, reparación de pinchaduras y balanceo.' },
-  { icon: TuneIcon, titulo: 'Motor y carburación', descripcion: 'Rectificaciones, carburadores e inyección para que arranque y ande pareja.' },
+const beneficios = [
+  { icon: CalendarMonthIcon, titulo: 'Turnos online', descripcion: 'Tus clientes reservan solos, eligiendo el servicio y el horario que les quede libre.' },
+  { icon: PeopleIcon, titulo: 'Clientes y vehículos', descripcion: 'Historial completo de cada cliente y cada vehículo, sin planillas sueltas.' },
+  { icon: Inventory2Icon, titulo: 'Stock y compras', descripcion: 'Control de repuestos con descuento automático al usarlos en una orden.' },
+  { icon: PaymentsIcon, titulo: 'Caja y reportes', descripcion: 'Cobros, gastos y balance del taller, siempre al día.' },
+  { icon: WhatsAppIcon, titulo: 'WhatsApp integrado', descripcion: 'Tus clientes también pueden pedir turno directamente por WhatsApp.' },
+  { icon: StorefrontIcon, titulo: 'Multi-taller', descripcion: 'Si manejás más de un local, todos desde la misma cuenta.' },
 ]
 
 const pasos = [
-  { icon: EventAvailableIcon, titulo: 'Reservá tu turno', descripcion: 'Elegí el servicio, el día y la hora desde nuestra agenda online o por WhatsApp.' },
-  { icon: TwoWheelerIcon, titulo: 'Traé tu moto', descripcion: 'La revisamos, te contamos exactamente qué necesita y cuánto cuesta, sin sorpresas.' },
-  { icon: CheckCircleIcon, titulo: 'Retirala lista', descripcion: 'Queda terminada, probada y con garantía en el trabajo realizado.' },
+  { titulo: 'Creá tu taller', descripcion: 'Te registrás gratis con el nombre de tu negocio y ya tenés tu cuenta lista.' },
+  { titulo: 'Cargá tus servicios', descripcion: 'Sumá lo que ofrecés, tus horarios y los datos de contacto.' },
+  { titulo: 'Compartí tu link', descripcion: 'Tus clientes reservan turnos solos desde tu página, sin llamadas.' },
 ]
 
-const reseñas = [
-  { nombre: 'Juan Pérez', texto: 'Excelente atención. Me lo dejaron impecable y en el día. Lo recomiendo de verdad.' },
-  { nombre: 'María Torres', texto: 'Presupuesto claro, sin vueltas y trabajo de calidad. Volví y volveré.' },
-  { nombre: 'Carlos Rodríguez', texto: 'Le hicieron el service completo y la diferencia se nota. Muy serios.' },
+const vehiculos = [
+  { icon: TwoWheelerIcon, label: 'Motos' },
+  { icon: DirectionsCarIcon, label: 'Autos' },
+  { icon: PedalBikeIcon, label: 'Bicicletas' },
+  { icon: LocalShippingIcon, label: 'Utilitarios' },
 ]
 
-const marcas = ['Motul', 'Yamalube', 'DID', 'NGK', 'Bosch', 'Pirelli', 'Michelin', 'Bridgestone']
-
-const trabajos = [
-  { icon: TuneIcon, titulo: 'Service completo', detalle: 'Honda CG 125 · 25.000 km' },
-  { icon: SpeedIcon, titulo: 'Frenos', detalle: 'Yamaha FZ 250' },
-  { icon: EngineeringIcon, titulo: 'Cadena y transmisión', detalle: 'Motomel 110' },
-  { icon: AutoFixHighIcon, titulo: 'Cubierta nueva', detalle: 'Zanella ZB 110' },
-  { icon: TroubleshootIcon, titulo: 'Electrónica y arranque', detalle: 'Gilera Smash' },
-  { icon: BuildIcon, titulo: 'Rectificación de motor', detalle: 'Corven 150' },
+const NAV_LINKS = [
+  { label: 'Beneficios', id: 'beneficios' },
+  { label: 'Cómo funciona', id: 'como-funciona' },
+  { label: 'Preguntas frecuentes', id: 'preguntas-frecuentes' },
 ]
 
-const preguntas = [
-  {
-    q: '¿Cómo reservo un turno para mi moto?',
-    a: 'Podés reservar online en esta web: elegís el servicio, el día y la hora, y te mostramos solo los horarios que quedan libres. También podés hacerlo por WhatsApp.',
-  },
-  {
-    q: '¿Trabajan con cualquier marca de moto?',
-    a: 'Sí. Atendemos motos nacionales e importadas, desde 50cc hasta 400cc y más, sin importar la marca.',
-  },
-  {
-    q: '¿Cuánto tarda la reparación?',
-    a: 'Depende del trabajo. Al recibir la moto te damos una estimación clara y te vamos avisando por WhatsApp cada avance.',
-  },
-  {
-    q: '¿Dan garantía por los trabajos?',
-    a: 'Sí. Todos los trabajos tienen garantía y usamos repuestos y lubricantes de primeras marcas.',
-  },
-  {
-    q: '¿El diagnóstico tiene costo?',
-    a: 'La revisión inicial se bonifica si hacés la reparación con nosotros. El presupuesto siempre se confirma antes de tocar la moto.',
-  },
-  {
-    q: '¿Cómo puedo pagar?',
-    a: 'Aceptamos efectivo, transferencia y tarjetas de crédito y débito. Consultá por promociones y planes de pago.',
-  },
+const faqs = [
+  { pregunta: '¿Tengo que instalar algo?', respuesta: 'No, es todo web. Entrás desde el navegador, tanto desde la computadora como desde el celular, sin instalar nada.' },
+  { pregunta: '¿Mis clientes necesitan crear una cuenta para pedir turno?', respuesta: 'No. Comparten tu link y reservan el turno directamente, sin registrarse.' },
+  { pregunta: '¿Sirve para cualquier tipo de vehículo?', respuesta: 'Sí, lo configurás según lo que repares: motos, autos, bicicletas, utilitarios o lo que necesites.' },
+  { pregunta: '¿Puedo cancelar cuando quiera?', respuesta: 'Sí, no hay permanencia. Cancelás cuando quieras desde tu cuenta.' },
+  { pregunta: '¿Puedo manejar más de un taller con la misma cuenta?', respuesta: 'Sí, la cuenta soporta múltiples talleres, cada uno con sus propios turnos, clientes y stock.' },
 ]
+
+const scrollToId = (id) => (e) => {
+  e.preventDefault()
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 export default function Landing() {
   const { token } = useAuth()
-  const { mode } = useColorMode()
+  const { mode, toggleColorMode } = useColorMode()
   const dark = mode === 'dark'
+  const [menuOpen, setMenuOpen] = useState(false)
+
   if (token) return <Navigate to="/panel" replace />
 
-  const wa = waLinkTaller('Hola 👋, quiero consultar por un servicio del taller.')
+  const scrollToIdAndClose = (id) => (e) => {
+    scrollToId(id)(e)
+    setMenuOpen(false)
+  }
 
-  const SeccionTitulo = ({ overline, titulo, texto }) => (
-    <Box sx={{ textAlign: 'center', maxWidth: 640, mx: 'auto', mb: { xs: 4, md: 5 } }}>
-      {overline && (
-        <Typography
-          variant="overline"
-          sx={{ color: (t) => t.palette.secondary.main, fontWeight: 800, letterSpacing: '0.14em' }}
-        >
-          {overline}
-        </Typography>
-      )}
-      <Typography
-        variant="h2"
-        sx={{ fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.12, mb: 1.5, fontSize: { xs: '1.8rem', md: '2.5rem' }, color: dark ? '#fff' : 'text.primary' }}
-      >
-        {titulo}
-      </Typography>
-      {texto && (
-        <Typography variant="body1" sx={{ color: dark ? 'rgba(255,255,255,0.65)' : 'text.secondary' }}>
-          {texto}
-        </Typography>
-      )}
-    </Box>
-  )
-
-  const seccionSx = { scrollMarginTop: 84, scrollSnapAlign: 'start' }
+  const textPrimary = dark ? '#f3ede0' : INK
+  const textSecondary = dark ? 'rgba(243,237,224,0.66)' : '#57534a'
+  const borderColor = dark ? 'rgba(243,237,224,0.14)' : 'rgba(24,20,15,0.14)'
+  const cardBg = dark ? PAPER_DARK : PAPER
+  const pageBg = dark ? INK : CONCRETE
+  const ticketInk = dark ? '#f3ede0' : INK
+  const ticketMuted = dark ? 'rgba(243,237,224,0.55)' : '#8a8478'
+  const ticketSub = dark ? 'rgba(243,237,224,0.72)' : '#5c5648'
+  const ticketDivider = dark ? 'rgba(243,237,224,0.18)' : 'rgba(24,20,15,0.18)'
 
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100svh', display: 'flex', flexDirection: 'column' }}>
-      <PublicHeader links={NAV_LINKS} />
-
-      {/* HERO */}
+    <Box sx={{ bgcolor: pageBg, color: textPrimary, minHeight: '100svh', display: 'flex', flexDirection: 'column' }}>
+      {/* HEADER */}
       <Box
+        component="header"
         sx={{
-          color: dark ? '#fff' : 'text.primary',
-          position: 'relative',
-          overflow: 'hidden',
-          background: dark
-            ? 'radial-gradient(1000px 500px at 85% -10%, rgba(100,116,139,0.22), transparent 60%), radial-gradient(800px 420px at 0% 110%, rgba(95,143,255,0.26), transparent 60%), #070c17'
-            : 'radial-gradient(1000px 500px at 85% -10%, rgba(100,116,139,0.14), transparent 60%), radial-gradient(800px 420px at 0% 110%, rgba(22,86,209,0.12), transparent 60%), #ffffff',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          bgcolor: dark ? 'rgba(24,20,15,0.88)' : 'rgba(233,228,216,0.88)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid',
+          borderColor,
         }}
       >
-        <Container maxWidth="lg" sx={{ py: { xs: 8, md: 12 }, textAlign: { xs: 'center', md: 'left' } }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 5, md: 4 }} sx={{ alignItems: 'center' }}>
-            <Box sx={{ flex: 1, maxWidth: 640 }}>
-              <Chip
-                label="Taller de motos en Tucumán"
-                size="small"
-                sx={{ mb: 2.5, color: dark ? '#fff' : 'text.secondary', borderColor: dark ? 'rgba(255,255,255,0.25)' : 'divider', bgcolor: dark ? 'rgba(255,255,255,0.06)' : 'action.hover', fontWeight: 600, '& .MuiChip-icon': { color: (t) => t.palette.secondary.light } }}
-                icon={<SpeedIcon />}
-              />
-              <Typography variant="h1" sx={{ fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.04, fontSize: { xs: '2.4rem', sm: '3rem', md: '3.6rem' }, mb: 2.5 }}>
-                Mecánica que cuida{' '}
-                <Box component="span" sx={{ background: (t) => t.custom.brandGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  tu moto
+        <Container maxWidth="lg">
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1.6 }}>
+            <Box sx={{ width: 34, height: 34, borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: SAFETY, color: '#fff', flexShrink: 0, transform: 'rotate(-4deg)', boxShadow: '0 3px 0 rgba(0,0,0,0.15)' }}>
+              <BuildIcon fontSize="small" />
+            </Box>
+            <Typography noWrap sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 20, letterSpacing: '0.01em', textTransform: 'uppercase', color: textPrimary }}>
+              Gestión de Talleres
+            </Typography>
+
+            <Stack direction="row" spacing={0.5} sx={{ display: { xs: 'none', md: 'flex' }, ml: 3, flexGrow: 1 }}>
+              {NAV_LINKS.map((link) => (
+                <Button
+                  key={link.id}
+                  href={`#${link.id}`}
+                  onClick={scrollToId(link.id)}
+                  size="small"
+                  sx={{ px: 1.5, borderRadius: 1, fontFamily: FONT_MONO, fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600, color: textSecondary, '&:hover': { color: textPrimary, bgcolor: 'transparent' } }}
+                >
+                  {link.label}
+                </Button>
+              ))}
+            </Stack>
+            <Box sx={{ flexGrow: { xs: 1, md: 0 } }} />
+
+            <Tooltip title={dark ? 'Modo claro' : 'Modo oscuro'}>
+              <IconButton size="small" onClick={toggleColorMode} sx={{ borderRadius: 1, color: textSecondary, border: '1px solid', borderColor }}>
+                {dark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+            <Button component={RouterLink} to="/login" sx={{ ...btnSx, display: { xs: 'none', sm: 'inline-flex' }, color: textPrimary }}>
+              Iniciar sesión
+            </Button>
+            <Button component={RouterLink} to="/registro" variant="contained" sx={{ ...btnSx, display: { xs: 'none', sm: 'inline-flex' }, bgcolor: SAFETY, color: '#fff', whiteSpace: 'nowrap', boxShadow: '0 3px 0 ' + SAFETY_DEEP, '&:hover': { bgcolor: SAFETY_DEEP, boxShadow: '0 3px 0 ' + SAFETY_DEEP } }}>
+              Creá tu taller
+            </Button>
+            <IconButton
+              size="small"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Abrir menú"
+              sx={{ display: { xs: 'inline-flex', md: 'none' }, borderRadius: 1, color: textSecondary, border: '1px solid', borderColor }}
+            >
+              <MenuIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+        </Container>
+      </Box>
+
+      <Drawer anchor="right" open={menuOpen} onClose={() => setMenuOpen(false)}>
+        <Box sx={{ width: 260, p: 2.5, height: '100%', bgcolor: pageBg, color: textPrimary }}>
+          <Stack direction="row" sx={{ justifyContent: 'flex-end', mb: 2 }}>
+            <IconButton size="small" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" sx={{ color: textPrimary }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+          <Stack spacing={0.5}>
+            {NAV_LINKS.map((link) => (
+              <Button
+                key={link.id}
+                href={`#${link.id}`}
+                onClick={scrollToIdAndClose(link.id)}
+                sx={{ ...btnSx, justifyContent: 'flex-start', color: textPrimary, px: 1.5 }}
+              >
+                {link.label}
+              </Button>
+            ))}
+            <Button component={RouterLink} to="/login" sx={{ ...btnSx, justifyContent: 'flex-start', color: textPrimary, px: 1.5, mt: 1 }}>
+              Iniciar sesión
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/registro"
+              variant="contained"
+              sx={{ ...btnSx, bgcolor: SAFETY, color: '#fff', mt: 1, boxShadow: '0 3px 0 ' + SAFETY_DEEP }}
+            >
+              Creá tu taller
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
+
+      {/* HERO */}
+      <Box sx={{ position: 'relative', overflow: 'hidden', ...pegboard(dark ? 'rgba(243,237,224,0.05)' : 'rgba(24,20,15,0.05)') }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 7, md: 11 } }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 6, md: 5 }} sx={{ alignItems: 'center' }}>
+            <Box sx={{ flex: 1, textAlign: { xs: 'center', md: 'left' }, maxWidth: { xs: '100%', md: 560 } }}>
+              <TicketTag ink={!dark} sx={{ mb: 3, transform: 'rotate(-1deg)', color: SAFETY, borderColor: SAFETY }}>
+                N.º 000 · software para talleres
+              </TicketTag>
+              <Typography
+                sx={{
+                  fontFamily: FONT_DISPLAY,
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.005em',
+                  lineHeight: 0.98,
+                  mb: 2.5,
+                  fontSize: { xs: '2.9rem', sm: '3.6rem', md: '4.4rem' },
+                }}
+              >
+                Gestión completa
+                <br />
+                para tu{' '}
+                <Box component="span" sx={{ color: SAFETY }}>
+                  taller
                 </Box>
               </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 500, color: dark ? 'rgba(255,255,255,0.78)' : 'text.secondary', mb: 3.5, lineHeight: 1.55 }}>
-                Diagnóstico honesto, presupuesto claro y trabajo con garantía para tu moto. Reservá tu turno online en minutos o escribinos por WhatsApp.
+              <Typography variant="h6" sx={{ fontWeight: 500, color: textSecondary, mb: 4, lineHeight: 1.55, maxWidth: 480, mx: { xs: 'auto', md: 0 } }}>
+                Turnos, clientes, stock, caja y reportes en un solo lugar. Moto, auto, bici o lo que repares — tus clientes reservan solos, online.
               </Typography>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: { xs: 'center', md: 'flex-start' } }}>
                 <Button
                   component={RouterLink}
-                  to="/agendar"
+                  to="/registro"
                   variant="contained"
                   size="large"
-                  startIcon={<CalendarMonthIcon />}
-                  sx={{ background: (t) => t.custom.brandGradient, fontSize: '0.95rem', px: 3.5, py: 1.3, '&:hover': { opacity: 0.92 } }}
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{ ...btnSx, fontSize: 14, bgcolor: SAFETY, color: '#fff', px: 4, boxShadow: '0 4px 0 ' + SAFETY_DEEP, '&:hover': { bgcolor: SAFETY_DEEP, boxShadow: '0 4px 0 ' + SAFETY_DEEP } }}
                 >
-                  Reservá tu turno
+                  Creá tu taller gratis
                 </Button>
-                {wa && (
-                  <Button
-                    component="a"
-                    href={wa}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="outlined"
-                    size="large"
-                    startIcon={<WhatsAppIcon />}
-                    sx={{ color: '#25D366', borderColor: 'rgba(37,211,102,0.55)', fontSize: '0.95rem', px: 3.5, py: 1.3, '&:hover': { borderColor: '#25D366', bgcolor: 'rgba(37,211,102,0.08)' } }}
-                  >
-                    Consultar por WhatsApp
-                  </Button>
-                )}
+                <Button component={RouterLink} to="/login" variant="outlined" size="large" sx={{ ...btnSx, fontSize: 14, px: 4, color: textPrimary, borderWidth: 1.5, borderColor: dark ? 'rgba(243,237,224,0.3)' : 'rgba(24,20,15,0.3)', '&:hover': { borderWidth: 1.5, borderColor: textPrimary, bgcolor: 'transparent' } }}>
+                  Ya tengo cuenta
+                </Button>
               </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 4, alignItems: { xs: 'center', sm: 'flex-start' } }}>
-                {['Presupuesto sin cargo', 'Garantía en trabajos', 'Atención rápida'].map((f) => (
-                  <Box key={f} sx={{ display: 'flex', alignItems: 'center', gap: 1, color: dark ? 'rgba(255,255,255,0.78)' : 'text.secondary' }}>
-                    <CheckCircleIcon sx={{ fontSize: 18, color: (t) => t.palette.primary.light }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{f}</Typography>
-                  </Box>
+              <Stack direction="row" spacing={1.25} sx={{ mt: 3.5, justifyContent: { xs: 'center', md: 'flex-start' }, flexWrap: 'wrap', rowGap: 1.25 }}>
+                {['Sin instalar nada', 'Desde el celular', 'Cancelás cuando quieras'].map((f) => (
+                  <TicketTag key={f} ink={!dark}>
+                    <CheckIcon sx={{ fontSize: 13, color: SAFETY }} />
+                    {f}
+                  </TicketTag>
                 ))}
               </Stack>
             </Box>
 
-            <Box sx={{ flexShrink: 0, width: { xs: '100%', md: 340 }, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
-              {[
-                { valor: '+10', label: 'años de experiencia' },
-                { valor: '+3.000', label: 'motos reparadas' },
-                { valor: '24h', label: 'de respuesta' },
-                { valor: '4.9★', label: 'opinión de clientes' },
-              ].map((s) => (
+            {/* Orden de trabajo — el objeto real de un taller, no un mockup de dashboard */}
+            <Box sx={{ flex: 1, width: '100%', maxWidth: 400, display: { xs: 'none', sm: 'block' } }}>
+              <Reveal direction="left" delay={100}>
+              <Box sx={{ position: 'relative', mx: 'auto', maxWidth: 360 }}>
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: -30,
+                    left: '50%',
+                    width: 30,
+                    height: 20,
+                    ml: '-15px',
+                    border: '2px solid',
+                    borderColor: STEEL,
+                    borderBottom: 'none',
+                    borderRadius: '50% 50% 0 0 / 100% 100% 0 0',
+                    opacity: 0.5,
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: -13,
+                    left: '50%',
+                    width: 14,
+                    height: 14,
+                    ml: '-7px',
+                    borderRadius: '50%',
+                    bgcolor: pageBg,
+                    border: '2px solid',
+                    borderColor: STEEL,
+                  }}
+                />
                 <Paper
-                  key={s.label}
                   elevation={0}
                   sx={{
-                    p: 2.5,
-                    textAlign: 'center',
-                    bgcolor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(22,86,209,0.05)',
-                    border: dark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(22,32,46,0.10)',
-                    borderRadius: 3,
-                    backdropFilter: dark ? 'blur(6px)' : 'none',
+                    position: 'relative',
+                    p: 3,
+                    borderRadius: 2,
+                    border: '1.5px solid',
+                    borderColor: dark ? 'rgba(243,237,224,0.16)' : 'rgba(24,20,15,0.14)',
+                    boxShadow: dark ? '0 24px 60px -20px rgba(0,0,0,0.55)' : '0 24px 60px -24px rgba(24,20,15,0.35)',
+                    bgcolor: cardBg,
+                    color: ticketInk,
+                    transform: 'rotate(-3deg)',
                   }}
                 >
-                  <Typography sx={{ fontSize: '1.6rem', fontWeight: 800, background: (t) => t.custom.brandGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.1 }}>
-                    {s.valor}
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 1.5 }}>
+                    <Typography sx={{ fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: ticketMuted }}>
+                      Orden de trabajo
+                    </Typography>
+                    <Typography sx={{ fontFamily: FONT_MONO, fontSize: 12, fontWeight: 600, color: ticketMuted }}>
+                      N.º 0842
+                    </Typography>
+                  </Stack>
+                  <Box sx={{ borderTop: '1.5px dashed', borderColor: ticketDivider, mb: 1.5 }} />
+
+                  <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, textTransform: 'uppercase', lineHeight: 1, mb: 0.5 }}>
+                    Fiat Cronos
                   </Typography>
-                  <Typography sx={{ fontSize: 12, color: dark ? 'rgba(255,255,255,0.6)' : 'text.secondary', mt: 0.5 }}>{s.label}</Typography>
+                  <Typography sx={{ fontSize: 14, color: ticketSub, mb: 2 }}>
+                    Juan P. · Cambio de aceite · 09:30
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
+                    <Box
+                      sx={{
+                        transform: 'rotate(-8deg)',
+                        border: '2px solid',
+                        borderColor: SAFETY,
+                        borderRadius: 1,
+                        px: 1.4,
+                        py: 0.4,
+                        color: SAFETY,
+                      }}
+                    >
+                      <Typography sx={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                        En taller
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ borderTop: '1.5px dashed', borderColor: ticketDivider, mb: 1.5 }} />
+                  <Stack direction="row" sx={{ '& > div': { flex: 1, textAlign: 'center' } }}>
+                    {[
+                      { label: 'Turnos hoy', valor: '8' },
+                      { label: 'En taller', valor: '3' },
+                      { label: 'Por cobrar', valor: '$42k' },
+                    ].map((s, i) => (
+                      <Box key={s.label} sx={{ borderLeft: i > 0 ? `1.5px dashed ${ticketDivider}` : 'none' }}>
+                        <Typography sx={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 18, color: ticketInk }}>{s.valor}</Typography>
+                        <Typography sx={{ fontSize: 10, letterSpacing: '0.04em', textTransform: 'uppercase', color: ticketMuted }}>{s.label}</Typography>
+                      </Box>
+                    ))}
+                  </Stack>
                 </Paper>
-              ))}
+              </Box>
+              </Reveal>
             </Box>
           </Stack>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: { xs: 5, md: 7 } }}>
-            <Box
-              onClick={() => document.getElementById('servicios')?.scrollIntoView({ behavior: 'smooth' })}
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 0.5,
-                color: dark ? 'rgba(255,255,255,0.5)' : 'text.disabled',
-                cursor: 'pointer',
-                '&:hover': { color: (t) => t.palette.secondary.main },
-              }}
+          {/* Tipos de vehículo */}
+          <Reveal delay={150}>
+            <Stack
+              direction="row"
+              spacing={{ xs: 1.5, sm: 2.5 }}
+              sx={{ mt: { xs: 6, md: 8 }, justifyContent: 'center', flexWrap: 'wrap', rowGap: 1.5 }}
             >
-              <Typography variant="caption" sx={{ fontWeight: 600 }}>Descubrí más</Typography>
-              <KeyboardArrowDownIcon sx={{ animation: 'bounceDown 1.6s infinite' }} />
-              <style>{`@keyframes bounceDown { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }`}</style>
-            </Box>
-          </Box>
+              {vehiculos.map((v) => (
+                <TicketTag key={v.label} ink={!dark}>
+                  <v.icon sx={{ fontSize: 15 }} />
+                  {v.label}
+                </TicketTag>
+              ))}
+            </Stack>
+          </Reveal>
         </Container>
       </Box>
 
-      {/* MARCAS */}
-      <Container maxWidth="lg" sx={{ py: 3.5 }}>
-        <Reveal direction="none">
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-              Lubricantes y repuestos de primeras marcas:
-            </Typography>
-            {marcas.map((m) => (
-              <Chip key={m} label={m} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
-            ))}
-          </Stack>
-        </Reveal>
-      </Container>
-
-      {/* SERVICIOS */}
-      <Box id="servicios" sx={seccionSx}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
+      {/* BENEFICIOS */}
+      <Box id="beneficios" sx={{ scrollMarginTop: 84 }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 7, md: 10 } }}>
           <Reveal>
-            <SeccionTitulo overline="Servicios" titulo="¿Qué hacemos en el taller?" texto="Todo lo que tu moto necesita, en un solo lugar y sin vueltas." />
+            <Typography sx={{ display: 'block', textAlign: 'center', fontFamily: FONT_MONO, fontWeight: 600, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: SAFETY, mb: 1.5 }}>
+              — Beneficios —
+            </Typography>
+            <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', fontSize: { xs: '2rem', md: '2.6rem' }, mb: 5 }}>
+              Todo lo que necesita tu taller
+            </Typography>
           </Reveal>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2.5 }}>
-            {servicios.map((s, i) => (
-              <Reveal key={s.titulo} delay={i * 70}>
-                <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, height: '100%', '&:hover': { transform: 'translateY(-4px)' } }}>
-                  <Box sx={{ width: 48, height: 48, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (t) => t.custom.brandGradient, color: '#fff', mb: 2, boxShadow: (t) => t.custom.shadow }}>
-                    <s.icon />
+            {beneficios.map((b, i) => (
+              <Reveal key={b.titulo} delay={i * 70}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    position: 'relative',
+                    p: 3,
+                    pt: 3.5,
+                    borderRadius: 1.5,
+                    height: '100%',
+                    borderColor,
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': { transform: 'translateY(-4px)', boxShadow: dark ? '0 16px 34px -18px rgba(0,0,0,0.6)' : '0 16px 34px -18px rgba(24,20,15,0.28)' },
+                  }}
+                >
+                  <Typography sx={{ position: 'absolute', top: 10, right: 14, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600, color: textSecondary, opacity: 0.6 }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </Typography>
+                  <Box sx={{ width: 44, height: 44, borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: SAFETY, color: '#fff', mb: 2, transform: `rotate(${i % 2 ? 2 : -2}deg)` }}>
+                    <b.icon fontSize="small" />
                   </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.75 }}>{s.titulo}</Typography>
-                  <Typography variant="body2" color="text.secondary">{s.descripcion}</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.75 }}>{b.titulo}</Typography>
+                  <Typography variant="body2" sx={{ color: textSecondary }}>{b.descripcion}</Typography>
                 </Paper>
               </Reveal>
             ))}
@@ -298,23 +414,41 @@ export default function Landing() {
       </Box>
 
       {/* CÓMO FUNCIONA */}
-      <Box id="como-funciona" sx={{ bgcolor: 'background.paper', borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', ...seccionSx }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
+      <Box id="como-funciona" sx={{ scrollMarginTop: 84, bgcolor: dark ? INK_SURFACE : BAND, borderTop: '1px solid', borderBottom: '1px solid', borderColor }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 7, md: 10 } }}>
           <Reveal>
-            <SeccionTitulo overline="Cómo funciona" titulo="De la reserva a la moto lista" texto="Tres pasos simples. Sin esperas innecesarias y con la información clara." />
+            <Typography sx={{ display: 'block', textAlign: 'center', fontFamily: FONT_MONO, fontWeight: 600, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: SAFETY, mb: 1.5 }}>
+              — Cómo funciona —
+            </Typography>
+            <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', fontSize: { xs: '2rem', md: '2.6rem' }, mb: 5 }}>
+              Empezá en tres pasos
+            </Typography>
           </Reveal>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>
             {pasos.map((p, i) => (
               <Reveal key={p.titulo} delay={i * 90}>
                 <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box sx={{ width: 46, height: 46, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (t) => t.palette.primary.main, color: '#fff', boxShadow: (t) => t.custom.shadow }}>
-                      <p.icon fontSize="small" />
-                    </Box>
-                    <Typography sx={{ fontWeight: 800, color: (t) => t.palette.secondary.main }}>Paso {i + 1}</Typography>
+                  <Box
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px dashed',
+                      borderColor: SAFETY,
+                      color: SAFETY,
+                      fontFamily: FONT_MONO,
+                      fontWeight: 700,
+                      fontSize: 18,
+                      transform: `rotate(${i % 2 ? 3 : -3}deg)`,
+                    }}
+                  >
+                    {i + 1}
                   </Box>
                   <Typography variant="h6" sx={{ fontWeight: 700 }}>{p.titulo}</Typography>
-                  <Typography variant="body2" color="text.secondary">{p.descripcion}</Typography>
+                  <Typography variant="body2" sx={{ color: textSecondary }}>{p.descripcion}</Typography>
                 </Stack>
               </Reveal>
             ))}
@@ -322,156 +456,114 @@ export default function Landing() {
         </Container>
       </Box>
 
-      {/* TRABAJOS */}
-      <Box id="trabajos" sx={seccionSx}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
+      {/* PREGUNTAS FRECUENTES */}
+      <Box id="preguntas-frecuentes" sx={{ scrollMarginTop: 84 }}>
+        <Container maxWidth="md" sx={{ py: { xs: 7, md: 10 } }}>
           <Reveal>
-            <SeccionTitulo overline="Trabajos" titulo="Motos que ya salieron andando" texto="Una muestra de los trabajos que hacemos a diario en el taller." />
+            <Typography sx={{ display: 'block', textAlign: 'center', fontFamily: FONT_MONO, fontWeight: 600, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: SAFETY, mb: 1.5 }}>
+              — Preguntas frecuentes —
+            </Typography>
+            <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', fontSize: { xs: '2rem', md: '2.6rem' }, mb: 5 }}>
+              Lo que más nos preguntan
+            </Typography>
           </Reveal>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2.5 }}>
-            {trabajos.map((t, i) => (
-              <Reveal key={t.titulo} delay={i * 70}>
-                <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, height: '100%', textAlign: 'center', '&:hover': { transform: 'translateY(-4px)' } }}>
-                  <Box sx={{ width: 52, height: 52, borderRadius: 2, mx: 'auto', mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (theme) => theme.custom.brandGradient, color: '#fff', boxShadow: (theme) => theme.custom.shadow }}>
-                    <t.icon />
-                  </Box>
-                  <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{t.titulo}</Typography>
-                  <Typography variant="body2" color="text.secondary">{t.detalle}</Typography>
-                </Paper>
-              </Reveal>
-            ))}
-          </Box>
-        </Container>
-      </Box>
-
-      {/* RESEÑAS */}
-      <Box id="opiniones" sx={seccionSx}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
-          <Reveal>
-            <SeccionTitulo overline="Opiniones" titulo="Lo que dicen nuestros clientes" />
-          </Reveal>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2.5 }}>
-            {reseñas.map((r, i) => (
-              <Reveal key={r.nombre} delay={i * 90}>
-                <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, height: '100%' }}>
-                  <Stack direction="row" spacing={0.5} sx={{ mb: 1.5 }}>
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <StarIcon key={j} sx={{ fontSize: 18, color: (t) => t.palette.warning.main }} />
-                    ))}
-                  </Stack>
-                  <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.6 }}>“{r.texto}”</Typography>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{r.nombre}</Typography>
-                </Paper>
-              </Reveal>
-            ))}
-          </Box>
-        </Container>
-      </Box>
-
-      {/* FAQ */}
-      <Box id="faq" sx={{ bgcolor: 'background.paper', borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', ...seccionSx }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
-          <Reveal>
-            <SeccionTitulo overline="Preguntas frecuentes" titulo="Dudas que siempre nos consultan" texto="Si no encontrás tu respuesta, escribinos por WhatsApp y te ayudamos." />
-          </Reveal>
-          <Box sx={{ maxWidth: 780, mx: 'auto' }}>
-            {preguntas.map((p, i) => (
-              <Reveal key={p.q} delay={i * 60} direction="none">
+          <Stack spacing={1.5}>
+            {faqs.map((f, i) => (
+              <Reveal key={f.pregunta} delay={i * 60}>
                 <Accordion
-                  slotProps={{ transition: { unmountOnExit: true } }}
+                  disableGutters
+                  variant="outlined"
                   sx={{
-                    mb: 1.5,
-                    borderRadius: 2,
+                    borderRadius: '10px !important',
+                    overflow: 'hidden',
+                    borderColor,
                     '&:before': { display: 'none' },
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    boxShadow: 'none',
+                    '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(45deg)' },
                   }}
                 >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ '& .MuiAccordionSummary-content': { my: 1.5 } }}>
-                    <Typography sx={{ fontWeight: 700 }}>{p.q}</Typography>
+                  <AccordionSummary expandIcon={<AddIcon sx={{ color: SAFETY }} />}>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'baseline' }}>
+                      <Typography sx={{ fontFamily: FONT_MONO, fontSize: 12, fontWeight: 700, color: textSecondary, opacity: 0.6 }}>
+                        Q{i + 1}
+                      </Typography>
+                      <Typography sx={{ fontWeight: 700 }}>{f.pregunta}</Typography>
+                    </Stack>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Typography variant="body2" color="text.secondary">{p.a}</Typography>
+                    <Typography variant="body2" sx={{ color: textSecondary, pl: { sm: 4.5 } }}>{f.respuesta}</Typography>
                   </AccordionDetails>
                 </Accordion>
               </Reveal>
             ))}
-          </Box>
-        </Container>
-      </Box>
-
-      {/* UBICACIÓN */}
-      <Box id="ubicacion" sx={seccionSx}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
-          <Reveal>
-            <SeccionTitulo overline="Ubicación" titulo="Encontrarnos es fácil" texto="Estamos en el centro de la ciudad, con fácil estacionamiento. Tocá el mapa para abrir la dirección directamente en Google Maps." />
-          </Reveal>
-          <Reveal delay={120}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.1fr 1fr' }, gap: { xs: 3, md: 5 }, alignItems: 'center' }}>
-              <Stack spacing={1.5} sx={{ mb: { xs: 1, md: 0 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <LocationOnIcon sx={{ fontSize: 22, color: (t) => t.palette.secondary.main }} />
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{DIRECCION}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <ScheduleIcon sx={{ fontSize: 22, color: (t) => t.palette.secondary.main }} />
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>Lun a Vie 8:00–18:00 · Sáb 8:00–13:00</Typography>
-                </Box>
-                <Button
-                  component="a"
-                  href={MAPS_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="contained"
-                  size="large"
-                  startIcon={<MapIcon />}
-                  sx={{ background: (t) => t.custom.brandGradient, px: 3.5, alignSelf: { xs: 'center', md: 'flex-start' }, '&:hover': { opacity: 0.92 } }}
-                >
-                  Cómo llegar (Google Maps)
-                </Button>
-              </Stack>
-              <Box
-                component="iframe"
-                src={MAPS_EMBED}
-                title="Ubicación del taller en Google Maps"
-                loading="lazy"
-                allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
-                sx={{ width: '100%', height: { xs: 280, md: 380 }, border: 0, borderRadius: 3, display: 'block', boxShadow: (t) => t.custom.shadow }}
-              />
-            </Box>
-          </Reveal>
+          </Stack>
         </Container>
       </Box>
 
       {/* CTA BANNER */}
-      <Box sx={{ color: '#fff', background: (t) => t.custom.brandGradient, position: 'relative', overflow: 'hidden' }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 }, textAlign: 'center' }}>
-          <Reveal>
-            <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.15, mb: 1.5, fontSize: { xs: '1.7rem', md: '2.4rem' } }}>
-              ¿Tenés un problema con tu moto?
-            </Typography>
-            <Typography sx={{ color: 'rgba(255,255,255,0.85)', mb: 3, fontSize: { xs: '0.95rem', md: '1.05rem' } }}>
-              Reservá tu turno online o escribinos por WhatsApp. Te respondemos rápido.
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'center' }}>
-              <Button component={RouterLink} to="/agendar" variant="contained" size="large" startIcon={<CalendarMonthIcon />} sx={{ bgcolor: '#fff', color: '#070c17', fontSize: '0.95rem', px: 3.5, '&:hover': { bgcolor: '#f0f0f0' } }}>
-                Reservá tu turno
+      <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+        <Box
+          sx={{
+            height: 10,
+            backgroundImage: `repeating-linear-gradient(-45deg, ${HAZARD}, ${HAZARD} 14px, ${INK} 14px, ${INK} 28px)`,
+          }}
+        />
+        <Box sx={{ color: '#fff8ec', bgcolor: SAFETY, ...pegboard('rgba(255,255,255,0.08)') }}>
+          <Container maxWidth="md" sx={{ py: { xs: 7, md: 9 }, textAlign: 'center' }}>
+            <Reveal>
+              <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', mb: 1.5, fontSize: { xs: '2.1rem', md: '2.8rem' } }}>
+                ¿Listo para digitalizar tu taller?
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,248,236,0.85)', mb: 3.5 }}>
+                Registrate gratis y empezá a recibir reservas online hoy mismo.
+              </Typography>
+              <Button
+                component={RouterLink}
+                to="/registro"
+                variant="contained"
+                size="large"
+                endIcon={<ArrowForwardIcon />}
+                sx={{ ...btnSx, fontSize: 14, bgcolor: INK, color: '#fff8ec', px: 4, boxShadow: '0 4px 0 rgba(0,0,0,0.35)', '&:hover': { bgcolor: '#000' } }}
+              >
+                Creá tu taller gratis
               </Button>
-              {wa && (
-                <Button component="a" href={wa} target="_blank" rel="noopener noreferrer" variant="outlined" size="large" startIcon={<WhatsAppIcon />} sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', fontSize: '0.95rem', px: 3.5, '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}>
-                  Escribinos por WhatsApp
-                </Button>
-              )}
-            </Stack>
-          </Reveal>
-        </Container>
+            </Reveal>
+          </Container>
+        </Box>
       </Box>
 
-      <Divider sx={{ borderColor: dark ? 'rgba(255,255,255,0.1)' : 'divider' }} />
-      <PublicFooter />
-      <WhatsAppFloat />
+      {/* FOOTER */}
+      <Box component="footer" sx={{ borderTop: '1px solid', borderColor, py: 4, mt: 'auto' }}>
+        <Container maxWidth="lg">
+          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+            <BuildIcon sx={{ fontSize: 15, color: textSecondary }} />
+            <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15, letterSpacing: '0.02em', textTransform: 'uppercase', color: textSecondary }}>
+              Gestión de Talleres
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={{ xs: 2, sm: 3.5 }} sx={{ justifyContent: 'center', flexWrap: 'wrap', rowGap: 1, mb: 2 }}>
+            {NAV_LINKS.map((link) => (
+              <Typography
+                key={link.id}
+                component="a"
+                href={`#${link.id}`}
+                onClick={scrollToId(link.id)}
+                sx={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.04em', textTransform: 'uppercase', color: textSecondary, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', '&:hover': { color: textPrimary } }}
+              >
+                {link.label}
+              </Typography>
+            ))}
+            <Typography component={RouterLink} to="/login" sx={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.04em', textTransform: 'uppercase', color: textSecondary, fontWeight: 600, textDecoration: 'none', '&:hover': { color: textPrimary } }}>
+              Iniciar sesión
+            </Typography>
+            <Typography component={RouterLink} to="/registro" sx={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.04em', textTransform: 'uppercase', color: textSecondary, fontWeight: 600, textDecoration: 'none', '&:hover': { color: textPrimary } }}>
+              Creá tu taller
+            </Typography>
+          </Stack>
+          <Typography sx={{ fontFamily: FONT_MONO, fontSize: 11, color: textSecondary, opacity: 0.7, display: 'block', textAlign: 'center' }}>
+            © {new Date().getFullYear()} · Software para talleres de motos, autos, bicicletas y más
+          </Typography>
+        </Container>
+      </Box>
     </Box>
   )
 }

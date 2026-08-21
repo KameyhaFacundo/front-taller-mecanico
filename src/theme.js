@@ -21,12 +21,15 @@ const light = {
   },
   custom: {
     appbar: 'rgba(255,255,255,0.82)',
-    sidebar: '#ffffff',
-    sidebarText: '#5b6472',
+    // El sidebar queda siempre oscuro (ink del taller), sin importar el modo
+    // claro/oscuro del panel — como un banco de herramientas fijo, distinto
+    // del contenido que sí cambia. Ver src/theme/workshopBrand.js.
+    sidebar: '#18140f',
+    sidebarText: 'rgba(243,237,224,0.68)',
     sidebarActive: '#ffffff',
-    sidebarBorder: 'rgba(17,24,39,0.10)',
-    sidebarHover: 'rgba(17,24,39,0.045)',
-    sidebarSurface: 'rgba(17,24,39,0.035)',
+    sidebarBorder: 'rgba(243,237,224,0.10)',
+    sidebarHover: 'rgba(243,237,224,0.08)',
+    sidebarSurface: 'rgba(243,237,224,0.05)',
     cardBorder: 'rgba(17,24,39,0.10)',
     brandGradient: 'linear-gradient(135deg, #1656d1, #0a2a72)',
     shadow: '0 1px 3px rgba(16,24,40,0.06), 0 8px 24px rgba(16,24,40,0.06)',
@@ -56,12 +59,12 @@ const dark = {
   },
   custom: {
     appbar: 'rgba(15,22,38,0.82)',
-    sidebar: '#05070d',
-    sidebarText: '#8394ad',
+    sidebar: '#18140f',
+    sidebarText: 'rgba(243,237,224,0.68)',
     sidebarActive: '#ffffff',
-    sidebarBorder: 'rgba(255,255,255,0.08)',
-    sidebarHover: 'rgba(255,255,255,0.08)',
-    sidebarSurface: 'rgba(255,255,255,0.04)',
+    sidebarBorder: 'rgba(243,237,224,0.10)',
+    sidebarHover: 'rgba(243,237,224,0.08)',
+    sidebarSurface: 'rgba(243,237,224,0.05)',
     cardBorder: 'rgba(231,236,245,0.09)',
     brandGradient: 'linear-gradient(135deg, #3563d1, #5f8fff)',
     shadow: '0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.25)',

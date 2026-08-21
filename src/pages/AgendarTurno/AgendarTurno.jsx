@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link as RouterLink, useParams } from 'react-router-dom'
+import { ThemeProvider } from '@mui/material/styles'
 import {
   Alert,
   Box,
@@ -6,6 +8,7 @@ import {
   Checkbox,
   Chip,
   Divider,
+  IconButton,
   InputAdornment,
   LinearProgress,
   Paper,
@@ -14,6 +17,7 @@ import {
   StepLabel,
   Stepper,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import BuildIcon from '@mui/icons-material/Build'
@@ -24,16 +28,19 @@ import PhoneIcon from '@mui/icons-material/Phone'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import PrintIcon from '@mui/icons-material/Print'
-import { crearTurnoPublico, listDisponibilidadPublica, listServiciosPublicos } from '../../services/publicoApi'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import DarkModeIcon from '@mui/icons-material/DarkModeOutlined'
+import LightModeIcon from '@mui/icons-material/LightModeOutlined'
+import { crearTurnoPublico, getPerfilPublico, listDisponibilidadPublica, listServiciosPublicos } from '../../services/publicoApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import MarcaAutocomplete from '../../components/MarcaAutocomplete'
 import ModeloAutocomplete from '../../components/ModeloAutocomplete'
 import TicketDialog from '../../components/TicketDialog'
-import PublicHeader from '../../components/public/PublicHeader'
-import PublicFooter from '../../components/public/PublicFooter'
-import WhatsAppFloat from '../../components/public/WhatsAppFloat'
+import TicketTag from '../../components/TicketTag'
+import { useColorMode } from '../../context/useColorMode'
 import { fmtDate, fmtDateTime, fmtMoney, fmtTime, fmtWeekdayShort } from '../../utils/format'
-import { waLink, waLinkTaller, waMensajeTurno } from '../../utils/wa'
+import { waLink, waMensajeTurno } from '../../utils/wa'
+import { SAFETY, FONT_DISPLAY, pegboard, getWorkshopTheme } from '../../theme/workshopBrand'
 
 const PASOS = ['Tus datos', 'Tu vehículo', 'Servicio y horario', 'Confirmación']
 
@@ -43,6 +50,9 @@ const pad = (n) => String(n).padStart(2, '0')
 const aISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
 export default function AgendarTurno() {
+  const { tallerSlug } = useParams()
+  const { mode, toggleColorMode } = useColorMode()
+  const dark = mode === 'dark'
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
@@ -52,7 +62,15 @@ export default function AgendarTurno() {
   const [huecos, setHuecos] = useState([])
   const [huecosLoading, setHuecosLoading] = useState(false)
 
-  const servicios = useAsyncData(listServiciosPublicos, { errorMessage: 'No se pudieron cargar los servicios.' })
+  const servicios = useAsyncData(() => listServiciosPublicos(tallerSlug), { errorMessage: 'No se pudieron cargar los servicios.' })
+  const perfil = useAsyncData(() => getPerfilPublico(tallerSlug), { errorMessage: 'No se pudo cargar el taller.' })
+  const nombreTaller = perfil.data?.nombre_negocio ?? 'el taller'
+
+  useEffect(() => {
+    const previous = document.title
+    document.title = nombreTaller + ' · Reservar turno'
+    return () => { document.title = previous }
+  }, [nombreTaller])
 
   // Próximos 14 días hábiles (lunes a viernes) para elegir el día.
   const fechas = useMemo(() => {
@@ -77,7 +95,7 @@ export default function AgendarTurno() {
     setHuecosLoading(true)
     setHuecos([])
     try {
-      const res = await listDisponibilidadPublica({ fecha, ...params })
+      const res = await listDisponibilidadPublica({ fecha, tallerSlug, ...params })
       if (seq !== huecosSeqRef.current) return
       const min = Date.now() + 60 * 60 * 1000
       setHuecos((res?.huecos ?? []).filter((h) => new Date(`${fecha}T${h}:00`).getTime() >= min))
@@ -87,7 +105,7 @@ export default function AgendarTurno() {
     } finally {
       if (seq === huecosSeqRef.current) setHuecosLoading(false)
     }
-  }, [])
+  }, [tallerSlug])
 
   const tieneServicio = form.otroActivo ? form.otroServicio.trim() !== '' : form.servicios.length > 0
 
@@ -199,7 +217,7 @@ export default function AgendarTurno() {
     }
     setSubmitting(true)
     try {
-      const creado = await crearTurnoPublico(payload)
+      const creado = await crearTurnoPublico(payload, tallerSlug)
       setTurno(creado)
     } catch (err) {
       const msg = err.response?.data?.message || 'No se pudo registrar el turno. Verificá los datos e intentá de nuevo.'
@@ -264,7 +282,7 @@ export default function AgendarTurno() {
   )
 
   const botonWhatsApp = (() => {
-    const url = waLinkTaller(waMensajeTurno(form.nombre.trim() || 'quiero'))
+    const url = waLink(perfil.data?.whatsapp, waMensajeTurno(form.nombre.trim() || 'quiero'))
     return (
       <Button
         component="a"
@@ -283,11 +301,23 @@ export default function AgendarTurno() {
     )
   })()
 
-  return (
-    <Box sx={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      <PublicHeader />
+  const volverTo = tallerSlug ? '/taller/' + tallerSlug : '/'
 
-      <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', p: { xs: 2, sm: 4 }, py: { xs: 3, sm: 5 } }}>
+  return (
+    <ThemeProvider theme={getWorkshopTheme(mode)}>
+      <Box sx={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', color: 'text.primary' }}>
+        <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: 'center', p: { xs: 2, sm: 3 } }}>
+          <Button component={RouterLink} to={volverTo} startIcon={<ArrowBackIcon />} size="small" sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary', bgcolor: 'transparent' } }}>
+            Volver
+          </Button>
+          <Tooltip title={dark ? 'Modo claro' : 'Modo oscuro'}>
+            <IconButton size="small" onClick={toggleColorMode} aria-label={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} sx={{ color: 'text.secondary', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+              {dark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Stack>
+
+      <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', px: { xs: 2, sm: 4 }, pb: { xs: 4, sm: 6 }, ...pegboard(dark ? 'rgba(243,237,224,0.04)' : 'rgba(24,20,15,0.04)') }}>
         <Box sx={{ width: '100%', maxWidth: 640 }}>
           {turno ? (
             <Paper variant="outlined" sx={{ p: { xs: 2.5, sm: 4 } }}>
@@ -335,10 +365,15 @@ export default function AgendarTurno() {
             </Paper>
           ) : (
             <>
-              <Stack spacing={0.5} sx={{ mb: 2.5, textAlign: 'center' }}>
-                <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-                  Pedí tu turno online
-                </Typography>
+              <Stack spacing={1.5} sx={{ mb: 3, textAlign: 'center' }}>
+                <Box>
+                  <TicketTag ink={!dark} sx={{ mb: 1.5, color: SAFETY, borderColor: SAFETY }}>
+                    {nombreTaller}
+                  </TicketTag>
+                  <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.005em', lineHeight: 0.98, fontSize: { xs: '2.2rem', sm: '2.8rem' }, color: 'text.primary' }}>
+                    Reservá tu turno
+                  </Typography>
+                </Box>
                 <Typography variant="body1" color="text.secondary">
                   Elegí el servicio, el día y el horario. Te mostramos solo las horas que quedan libres.
                 </Typography>
@@ -399,15 +434,6 @@ export default function AgendarTurno() {
                           Solo lo usamos para confirmar tu turno. Nunca lo compartimos.
                         </Typography>
                       </Stack>
-                      <Divider sx={{ my: 3 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          o
-                        </Typography>
-                      </Divider>
-                      {botonWhatsApp}
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
-                        Preferís agendar hablando con alguien? El asistente de WhatsApp te ayuda.
-                      </Typography>
                     </>
                   )}
 
@@ -423,6 +449,7 @@ export default function AgendarTurno() {
                           required
                           fullWidth
                           publico
+                          tallerSlug={tallerSlug}
                         />
                         <ModeloAutocomplete
                           marca={form.marca}
@@ -431,6 +458,7 @@ export default function AgendarTurno() {
                           required
                           fullWidth
                           publico
+                          tallerSlug={tallerSlug}
                         />
                         <TextField
                           label="Patente"
@@ -631,16 +659,35 @@ export default function AgendarTurno() {
                       </Button>
                     )}
                     {step < PASOS.length - 1 ? (
-                      <Button onClick={siguiente} variant="contained" size="large" fullWidth disabled={submitting}>
+                      // key distinta de la del botón de abajo: sin esto, al pasar del
+                      // último paso intermedio a "Confirmación" React reutiliza el mismo
+                      // <button> del DOM y le cambia type="button" a type="submit" en el
+                      // mismo evento de click — el navegador termina enviando el form
+                      // solo, sin que el usuario llegue a tocar "Confirmar turno".
+                      <Button key="btn-continuar" onClick={siguiente} variant="contained" size="large" fullWidth disabled={submitting}>
                         Continuar
                       </Button>
                     ) : (
-                      <Button type="submit" variant="contained" size="large" fullWidth disabled={submitting} startIcon={<ScheduleIcon />}>
+                      <Button key="btn-confirmar" type="submit" variant="contained" size="large" fullWidth disabled={submitting} startIcon={<ScheduleIcon />}>
                         {submitting ? 'Registrando…' : 'Confirmar turno'}
                       </Button>
                     )}
                   </Stack>
                   {submitting && <LinearProgress sx={{ mt: 2 }} />}
+
+                  {step === 0 && (
+                    <>
+                      <Divider sx={{ my: 3 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          o
+                        </Typography>
+                      </Divider>
+                      {botonWhatsApp}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                        Preferís agendar hablando con alguien? El asistente de WhatsApp te ayuda.
+                      </Typography>
+                    </>
+                  )}
 
                   {step === PASOS.length - 1 && (
                     <>
@@ -655,21 +702,13 @@ export default function AgendarTurno() {
                 </Box>
               </Paper>
 
-              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', justifyContent: 'center', mt: 3 }}>
-                <BuildIcon fontSize="small" color="text.secondary" />
-                <Typography variant="caption" color="text.secondary">
-                  Impulsa Motors · Si necesitás ayuda, llamanos o escribinos por WhatsApp.
-                </Typography>
-              </Stack>
             </>
           )}
         </Box>
       </Box>
 
-      <PublicFooter />
-      <WhatsAppFloat />
-
       <TicketDialog open={Boolean(ticket)} onClose={() => setTicket(null)} {...ticket} />
     </Box>
+    </ThemeProvider>
   )
 }

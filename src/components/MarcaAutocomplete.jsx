@@ -10,8 +10,8 @@ import { useAsyncData } from '../hooks/useAsyncData'
 // el "+" de servicios). Con publico=true (página de turno online) no se crea
 // nada en el catálogo: la opción pasa a ser "Usar «X»" y el texto se guarda tal
 // cual en el vehículo, por si no está cargada en la base.
-export default function MarcaAutocomplete({ value, onChange, required = false, autoFocus = false, refreshSignal, publico = false }) {
-  const marcas = useAsyncData(publico ? listMarcasPublicas : listMarcas)
+export default function MarcaAutocomplete({ value, onChange, required = false, autoFocus = false, refreshSignal, publico = false, tallerSlug }) {
+  const marcas = useAsyncData(publico ? () => listMarcasPublicas(tallerSlug) : listMarcas)
   const { refresh } = marcas
   const nombres = (marcas.data ?? []).map((m) => m.nombre)
   const [input, setInput] = useState('')
@@ -56,6 +56,12 @@ export default function MarcaAutocomplete({ value, onChange, required = false, a
   return (
     <Autocomplete
       freeSolo
+      // autoSelect: sin esto, escribir un texto y no hacer clic en la sugerencia
+      // del desplegable dejaba el valor sin guardar en el formulario (el campo se
+      // veía lleno pero el submit lo trataba como vacío). Con autoSelect, al perder
+      // el foco se confirma el texto tipeado como valor aunque no se haya elegido
+      // una opción de la lista.
+      autoSelect
       options={nombres}
       value={value ?? ''}
       inputValue={input}

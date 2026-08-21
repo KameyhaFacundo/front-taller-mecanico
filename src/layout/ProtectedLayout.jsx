@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { ThemeProvider } from '@mui/material/styles'
 import {
   AppBar,
   Avatar,
@@ -34,6 +35,8 @@ import BuildIcon from '@mui/icons-material/Build'
 import SettingsIcon from '@mui/icons-material/Settings'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import StorefrontIcon from '@mui/icons-material/Storefront'
+import WavingHandIcon from '@mui/icons-material/WavingHand'
 import DarkModeIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeIcon from '@mui/icons-material/LightModeOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
@@ -41,11 +44,12 @@ import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../context/useColorMode'
 import { useTokenExpirationCheck } from '../hooks/useTokenExpirationCheck'
 import HelpDialog from '../components/HelpDialog'
+import BrandMark from '../components/BrandMark'
 import { initials } from '../utils/format'
+import { SAFETY, SAFETY_DEEP, FONT_MONO, pegboard, getWorkshopTheme } from '../theme/workshopBrand'
 
 const DRAWER_WIDTH = 228
 const RAIL_WIDTH = 84
-const LOGO_HEIGHT = 32
 const SIDEBAR_STORAGE_KEY = 'sidebarOpen'
 
 const sections = [
@@ -84,8 +88,9 @@ const sections = [
 ]
 
 export default function ProtectedLayout() {
-  const { token, loading, user, role, logout } = useAuth()
+  const { token, loading, user, role, memberships, activeTaller, activeTallerId, isSuperadmin, logout } = useAuth()
   const { mode, toggleColorMode } = useColorMode()
+  const workshopTheme = getWorkshopTheme(mode)
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -98,13 +103,19 @@ export default function ProtectedLayout() {
   }, [desktopOpen])
 
   const allSections = useMemo(() => {
-    if (role !== 'admin') return sections
-    return sections.map((section) =>
-      section.key === 'configuracion'
-        ? { ...section, children: [...section.children, { icon: AdminPanelSettingsIcon, label: 'Usuarios', path: '/users' }] }
-        : section
-    )
-  }, [role])
+    let result = sections
+    if (role === 'admin') {
+      result = result.map((section) =>
+        section.key === 'configuracion'
+          ? { ...section, children: [...section.children, { icon: AdminPanelSettingsIcon, label: 'Usuarios', path: '/users' }] }
+          : section
+      )
+    }
+    if (isSuperadmin) {
+      result = [...result, { key: 'superadmin', icon: StorefrontIcon, label: 'Talleres', path: '/superadmin/talleres' }]
+    }
+    return result
+  }, [role, isSuperadmin])
 
   const isPathActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
   const isSectionActive = (section) =>
@@ -112,16 +123,18 @@ export default function ProtectedLayout() {
 
   if (loading) return null
   if (!token) return <Navigate to="/login" replace />
+  if (!activeTallerId) return <Navigate to="/seleccionar-taller" replace />
 
   const renderSidebar = (onClose, onNavigate = () => {}) => (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: (t) => t.custom.sidebar, color: (t) => t.custom.sidebarText }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: (t) => t.custom.sidebar, color: (t) => t.custom.sidebarText, ...pegboard('rgba(243,237,224,0.035)') }}>
       <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 56 }}>
-        <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: LOGO_HEIGHT, width: 'auto', flexShrink: 0 }} />
+        <BrandMark color="#f3ede0" size={14} iconSize={28} />
         <Box sx={{ flexGrow: 1 }} />
         <Tooltip title="Colapsar menú">
           <IconButton
             size="small"
             onClick={onClose}
+            aria-label="Colapsar menú"
             sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1, bgcolor: (t) => t.custom.sidebarHover } }}
           >
             <ChevronLeftIcon fontSize="small" />
@@ -133,7 +146,7 @@ export default function ProtectedLayout() {
         {allSections.map((section) =>
           section.children ? (
             <Box key={section.key} sx={{ mb: 1 }}>
-              <Typography variant="caption" sx={{ px: 1.5, pt: 1, pb: 0.5, display: 'block', opacity: 0.6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <Typography sx={{ px: 1.5, pt: 1, pb: 0.5, display: 'block', opacity: 0.55, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 {section.label}
               </Typography>
               {section.children.map((child) => (
@@ -163,15 +176,15 @@ export default function ProtectedLayout() {
             '&:hover': { bgcolor: (t) => t.custom.sidebarHover },
           }}
         >
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: SAFETY, fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
             {initials(user?.name)}
           </Avatar>
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Typography variant="body2" noWrap sx={{ color: (t) => t.palette.text.primary, fontWeight: 700, lineHeight: 1.25, fontSize: 13 }}>
+            <Typography variant="body2" noWrap sx={{ color: '#f3ede0', fontWeight: 700, lineHeight: 1.25, fontSize: 13 }}>
               {user?.name}
             </Typography>
             <Typography variant="caption" noWrap sx={{ opacity: 0.6, fontSize: 11 }}>
-              {role === 'admin' ? 'Admin' : 'Empleado'}
+              {role === 'admin' ? 'Admin' : 'Empleado'} · {activeTaller?.nombre}
             </Typography>
           </Box>
           <MoreVertIcon fontSize="small" sx={{ opacity: 0.5, flexShrink: 0 }} />
@@ -181,9 +194,9 @@ export default function ProtectedLayout() {
   )
 
   const rail = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', bgcolor: (t) => t.custom.sidebar, color: (t) => t.custom.sidebarText }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', bgcolor: (t) => t.custom.sidebar, color: (t) => t.custom.sidebarText, ...pegboard('rgba(243,237,224,0.035)') }}>
       <Box sx={{ pl: 0.5, pr: 0.25, py: 1.5, minHeight: 56, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, width: '100%' }}>
-        <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: LOGO_HEIGHT, width: 'auto', flexShrink: 0 }} />
+        <BrandMark iconOnly iconSize={28} />
         <Tooltip title="Abrir menú" placement="right">
           <IconButton
             size="small"
@@ -219,7 +232,7 @@ export default function ProtectedLayout() {
         <Tooltip title={user?.name || 'Cuenta'} placement="right">
           <Avatar
             onClick={(event) => setUserMenuAnchor(event.currentTarget)}
-            sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+            sx={{ width: 32, height: 32, bgcolor: SAFETY, fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
           >
             {initials(user?.name)}
           </Avatar>
@@ -229,25 +242,25 @@ export default function ProtectedLayout() {
   )
 
   return (
+    <ThemeProvider theme={workshopTheme}>
     <Box sx={{ display: 'flex', height: '100svh', overflow: 'hidden', bgcolor: 'background.default' }}>
       <AppBar
         position="fixed"
         elevation={0}
         sx={{
           display: { xs: 'block', md: 'none' },
-          bgcolor: (t) => t.custom.appbar,
-          backdropFilter: 'blur(12px)',
-          color: 'text.primary',
+          bgcolor: '#18140f',
+          color: '#f3ede0',
           borderBottom: '1px solid',
-          borderColor: 'divider',
+          borderColor: 'rgba(243,237,224,0.10)',
         }}
       >
         <Toolbar sx={{ gap: 1.5 }}>
-          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen((v) => !v)}>
+          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen((v) => !v)} aria-label="Abrir menú">
             <MenuIcon />
           </IconButton>
 
-          <Box component="img" src="/logo.png" alt="Impulsa Motors" sx={{ height: 32, width: 'auto', flexShrink: 0 }} />
+          <BrandMark color="#f3ede0" size={16} iconSize={28} />
         </Toolbar>
       </AppBar>
 
@@ -263,6 +276,30 @@ export default function ProtectedLayout() {
           </ListItemIcon>
           Configuración
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setUserMenuAnchor(null)
+            navigate('/bienvenida')
+          }}
+        >
+          <ListItemIcon>
+            <WavingHandIcon fontSize="small" />
+          </ListItemIcon>
+          Guía de bienvenida
+        </MenuItem>
+        {memberships.length > 1 && (
+          <MenuItem
+            onClick={() => {
+              setUserMenuAnchor(null)
+              navigate('/seleccionar-taller')
+            }}
+          >
+            <ListItemIcon>
+              <StorefrontIcon fontSize="small" />
+            </ListItemIcon>
+            Cambiar taller
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             toggleColorMode()
@@ -339,13 +376,14 @@ export default function ProtectedLayout() {
         </Box>
       </Box>
     </Box>
+    </ThemeProvider>
   )
 }
 
 function NavItem({ link, active, onNavigate }) {
   const Icon = link.icon
   return (
-    <ListItemButton component={NavLink} to={link.path} end={link.end} onClick={onNavigate} selected={active} sx={{ borderRadius: 2, mb: 0.5, minHeight: 44, color: active ? '#fff' : 'inherit', '&.Mui-selected': { background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.primary.dark})`, color: '#fff' }, '&:hover:not(.Mui-selected)': { backgroundColor: (t) => t.custom.sidebarHover } }}>
+    <ListItemButton component={NavLink} to={link.path} end={link.end} onClick={onNavigate} selected={active} sx={{ borderRadius: 2, mb: 0.5, minHeight: 44, color: active ? '#fff' : 'inherit', '&.Mui-selected': { background: `linear-gradient(135deg, ${SAFETY}, ${SAFETY_DEEP})`, color: '#fff' }, '&:hover:not(.Mui-selected)': { backgroundColor: (t) => t.custom.sidebarHover } }}>
       <ListItemIcon sx={{ minWidth: 0, mr: 1.25, color: 'inherit' }}>
         <Icon fontSize="small" />
       </ListItemIcon>
@@ -371,7 +409,7 @@ function RailNavItem({ link, active }) {
           flexShrink: 0,
           justifyContent: 'center',
           color: active ? '#fff' : 'inherit',
-          '&.Mui-selected': { background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.primary.dark})`, color: '#fff' },
+          '&.Mui-selected': { background: `linear-gradient(135deg, ${SAFETY}, ${SAFETY_DEEP})`, color: '#fff' },
           '&:hover:not(.Mui-selected)': { backgroundColor: (t) => t.custom.sidebarHover },
         }}
       >

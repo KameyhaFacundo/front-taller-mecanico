@@ -5,16 +5,14 @@ import { createModelo, listModelos, listMarcas } from '../services/clientesApi'
 import { listModelosPublicos, listMarcasPublicas } from '../services/publicoApi'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-const fetchModelosPublicos = () => listModelosPublicos()
-
 // freeSolo + opción explícita "Crear «nombre»": si escribís un modelo que no
 // existe, aparece en la lista para crearlo en el catálogo (misma mecánica que
 // el "+" de servicios). Con publico=true (página de turno online) no se crea
 // nada en el catálogo: la opción pasa a ser "Usar «X»" y el texto se guarda tal
 // cual en el vehículo, por si no está cargado en la base.
-export default function ModeloAutocomplete({ marca, value, onChange, required = false, refreshSignal, publico = false }) {
-  const modelos = useAsyncData(publico ? fetchModelosPublicos : listModelos)
-  const marcas = useAsyncData(publico ? listMarcasPublicas : listMarcas)
+export default function ModeloAutocomplete({ marca, value, onChange, required = false, refreshSignal, publico = false, tallerSlug }) {
+  const modelos = useAsyncData(publico ? () => listModelosPublicos(null, tallerSlug) : listModelos)
+  const marcas = useAsyncData(publico ? () => listMarcasPublicas(tallerSlug) : listMarcas)
   const refreshModelos = modelos.refresh
   const refreshMarcas = marcas.refresh
   const [input, setInput] = useState('')
@@ -65,6 +63,9 @@ export default function ModeloAutocomplete({ marca, value, onChange, required = 
   return (
     <Autocomplete
       freeSolo
+      // autoSelect: mismo fix que en MarcaAutocomplete — sin esto, tipear sin
+      // elegir la sugerencia del desplegable dejaba el campo sin valor real.
+      autoSelect
       options={opciones}
       value={value ?? ''}
       inputValue={input}

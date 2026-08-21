@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, Paper, Skeleton, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, Grid, IconButton, InputAdornment, Paper, Skeleton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import StoreIcon from '@mui/icons-material/Store'
 import LockIcon from '@mui/icons-material/Lock'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { getConfiguracion, updateConfiguracion } from '../../services/configuracionApi'
 import { updatePasswordApi } from '../../services/authApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
@@ -13,15 +15,34 @@ const emptyPasswordForm = { current_password: '', password: '', password_confirm
 
 export default function Configuracion() {
   const notify = useNotify()
-  const { role } = useAuth()
+  const { role, activeTaller } = useAuth()
   const esAdmin = role === 'admin'
+  const linkPublico = activeTaller ? `${window.location.origin}/taller/${activeTaller.slug}` : ''
+
+  const copiarLinkPublico = async () => {
+    try {
+      await navigator.clipboard.writeText(linkPublico)
+      notify.success('Link copiado.')
+    } catch {
+      notify.error('No se pudo copiar el link.')
+    }
+  }
 
   const config = useAsyncData(getConfiguracion, { errorMessage: 'No se pudo cargar la configuración del negocio.' })
-  const [nombreNegocio, setNombreNegocio] = useState('')
+  const [negocio, setNegocio] = useState({ nombre_negocio: '', tipo_vehiculo: '', direccion: '', whatsapp: '', whatsapp_phone_number_id: '', horario: '' })
   const [guardandoNegocio, setGuardandoNegocio] = useState(false)
 
   useEffect(() => {
-    if (config.data) setNombreNegocio(config.data.nombre_negocio ?? '')
+    if (config.data) {
+      setNegocio({
+        nombre_negocio: config.data.nombre_negocio ?? '',
+        tipo_vehiculo: config.data.tipo_vehiculo ?? '',
+        direccion: config.data.direccion ?? '',
+        whatsapp: config.data.whatsapp ?? '',
+        whatsapp_phone_number_id: config.data.whatsapp_phone_number_id ?? '',
+        horario: config.data.horario ?? '',
+      })
+    }
   }, [config.data])
 
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm)
@@ -31,11 +52,18 @@ export default function Configuracion() {
     event.preventDefault()
     setGuardandoNegocio(true)
     try {
-      await updateConfiguracion({ nombre_negocio: nombreNegocio.trim() })
-      notify.success('Nombre del negocio actualizado.')
+      await updateConfiguracion({
+        nombre_negocio: negocio.nombre_negocio.trim(),
+        tipo_vehiculo: negocio.tipo_vehiculo.trim() || null,
+        direccion: negocio.direccion.trim() || null,
+        whatsapp: negocio.whatsapp.trim() || null,
+        whatsapp_phone_number_id: negocio.whatsapp_phone_number_id.trim() || null,
+        horario: negocio.horario.trim() || null,
+      })
+      notify.success('Datos del negocio actualizados.')
       config.refresh()
     } catch (err) {
-      notify.error(err.response?.data?.message || 'No se pudo guardar el nombre del negocio.')
+      notify.error(err.response?.data?.message || 'No se pudo guardar los datos del negocio.')
     } finally {
       setGuardandoNegocio(false)
     }
@@ -63,9 +91,10 @@ export default function Configuracion() {
     <Box>
       <PageHeader title="Configuración" subtitle="Datos del negocio y de tu cuenta." />
 
-      <Stack spacing={3} sx={{ maxWidth: 560 }}>
+      <Grid container spacing={3}>
         {esAdmin && (
-          <Paper variant="outlined" sx={{ p: 2.5 }}>
+        <Grid size={{ xs: 12, lg: 7 }}>
+          <Paper variant="outlined" sx={{ p: 2.5, height: '100%' }}>
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 2 }}>
               <Box sx={{ width: 40, height: 40, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'primary.main', color: '#fff', flexShrink: 0 }}>
                 <StoreIcon fontSize="small" />
@@ -75,7 +104,7 @@ export default function Configuracion() {
                   Negocio
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Nombre del taller que se muestra en el sistema.
+                  Nombre y datos públicos que ve la gente en tu página de reservas.
                 </Typography>
               </Box>
             </Stack>
@@ -84,9 +113,66 @@ export default function Configuracion() {
             ) : (
               <Box component="form" onSubmit={handleNegocioSubmit}>
                 <Stack spacing={2}>
-                  <TextField label="Nombre del negocio" value={nombreNegocio} onChange={(e) => setNombreNegocio(e.target.value)} required fullWidth />
+                  <TextField label="Nombre del negocio" value={negocio.nombre_negocio} onChange={(e) => setNegocio((prev) => ({ ...prev, nombre_negocio: e.target.value }))} required fullWidth />
+                  <TextField
+                    label="Tipo de vehículo"
+                    value={negocio.tipo_vehiculo}
+                    onChange={(e) => setNegocio((prev) => ({ ...prev, tipo_vehiculo: e.target.value }))}
+                    placeholder="Motos, autos, bicicletas…"
+                    fullWidth
+                  />
+                  <TextField label="Dirección" value={negocio.direccion} onChange={(e) => setNegocio((prev) => ({ ...prev, direccion: e.target.value }))} fullWidth />
+                  <TextField
+                    label="WhatsApp"
+                    value={negocio.whatsapp}
+                    onChange={(e) => setNegocio((prev) => ({ ...prev, whatsapp: e.target.value }))}
+                    placeholder="+54 9 11 0000 0000"
+                    helperText="El número que ven tus clientes (botón de WhatsApp de tu página)."
+                    fullWidth
+                  />
+                  <TextField
+                    label="Phone Number ID de WhatsApp Business (Meta)"
+                    value={negocio.whatsapp_phone_number_id}
+                    onChange={(e) => setNegocio((prev) => ({ ...prev, whatsapp_phone_number_id: e.target.value }))}
+                    placeholder="Ej: 109876543210987"
+                    helperText="Solo si conectaste el bot de WhatsApp: es el ID técnico de Meta para tu número (no el número en sí). Con esto el sistema sabe que los mensajes de ese número son tuyos."
+                    fullWidth
+                  />
+                  <TextField
+                    label="Horario de atención"
+                    value={negocio.horario}
+                    onChange={(e) => setNegocio((prev) => ({ ...prev, horario: e.target.value }))}
+                    placeholder="Lun a Vie 9 a 18hs"
+                    fullWidth
+                  />
+                  {linkPublico && (
+                    <TextField
+                      label="Página pública para reservar turnos"
+                      value={linkPublico}
+                      fullWidth
+                      slotProps={{
+                        input: {
+                          readOnly: true,
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Tooltip title="Copiar link">
+                                <IconButton size="small" onClick={copiarLinkPublico}>
+                                  <ContentCopyIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Abrir en una pestaña nueva">
+                                <IconButton size="small" component="a" href={linkPublico} target="_blank" rel="noopener noreferrer">
+                                  <OpenInNewIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  )}
                   <Box>
-                    <Button type="submit" variant="contained" disabled={guardandoNegocio || !nombreNegocio.trim()}>
+                    <Button type="submit" variant="contained" disabled={guardandoNegocio || !negocio.nombre_negocio.trim()}>
                       {guardandoNegocio ? 'Guardando…' : 'Guardar'}
                     </Button>
                   </Box>
@@ -94,9 +180,11 @@ export default function Configuracion() {
               </Box>
             )}
           </Paper>
+        </Grid>
         )}
 
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
+        <Grid size={{ xs: 12, lg: esAdmin ? 5 : 12 }}>
+        <Paper variant="outlined" sx={{ p: 2.5, maxWidth: esAdmin ? 'none' : 480 }}>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 2 }}>
             <Box sx={{ width: 40, height: 40, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'secondary.main', color: '#fff', flexShrink: 0 }}>
               <LockIcon fontSize="small" />
@@ -147,7 +235,8 @@ export default function Configuracion() {
             </Stack>
           </Box>
         </Paper>
-      </Stack>
+        </Grid>
+      </Grid>
     </Box>
   )
 }
