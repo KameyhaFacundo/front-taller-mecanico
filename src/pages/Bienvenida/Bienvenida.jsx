@@ -89,7 +89,7 @@ export default function Bienvenida() {
                     <Box sx={{ width: 52, height: 52, borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: SAFETY, color: '#fff', flexShrink: 0, transform: 'rotate(-3deg)', boxShadow: '0 3px 0 rgba(0,0,0,0.15)' }}>
                       <Icono fontSize="medium" />
                     </Box>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
                       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
                         <Typography sx={{ fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700, color: SAFETY, letterSpacing: '0.08em' }}>
                           PASO {paso.numero}
