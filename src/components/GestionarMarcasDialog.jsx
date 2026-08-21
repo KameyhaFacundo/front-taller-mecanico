@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Button, IconButton, Stack, TextField, Typography } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import LocalOfferIcon from '@mui/icons-material/LocalOffer'
@@ -11,6 +11,12 @@ import ConfirmDialog from './ConfirmDialog'
 export default function GestionarMarcasDialog({ open, onClose, onChanged }) {
   const notify = useNotify()
   const marcas = useAsyncData(listMarcas)
+  const refreshMarcas = marcas.refresh
+
+  useEffect(() => {
+    if (open) refreshMarcas()
+  }, [open, refreshMarcas])
+
   const [nombre, setNombre] = useState('')
   const [busy, setBusy] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)

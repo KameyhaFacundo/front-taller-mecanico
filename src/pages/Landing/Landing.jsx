@@ -562,6 +562,14 @@ export default function Landing() {
           <Typography sx={{ fontFamily: FONT_MONO, fontSize: 11, color: textSecondary, opacity: 0.7, display: 'block', textAlign: 'center' }}>
             © {new Date().getFullYear()} · Software para talleres de motos, autos, bicicletas y más
           </Typography>
+          <Stack direction="row" spacing={2} sx={{ justifyContent: 'center', mt: 1 }}>
+            <Typography component={RouterLink} to="/terminos" sx={{ fontFamily: FONT_MONO, fontSize: 11, color: textSecondary, opacity: 0.7, textDecoration: 'none', '&:hover': { opacity: 1 } }}>
+              Términos y condiciones
+            </Typography>
+            <Typography component={RouterLink} to="/privacidad" sx={{ fontFamily: FONT_MONO, fontSize: 11, color: textSecondary, opacity: 0.7, textDecoration: 'none', '&:hover': { opacity: 1 } }}>
+              Privacidad
+            </Typography>
+          </Stack>
         </Container>
       </Box>
     </Box>

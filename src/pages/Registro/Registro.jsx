@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link as RouterLink, Navigate, useNavigate } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
-import { Alert, Box, Button, IconButton, InputAdornment, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import { Alert, Box, Button, Checkbox, FormControlLabel, IconButton, InputAdornment, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import PersonIcon from '@mui/icons-material/Person'
 import EmailIcon from '@mui/icons-material/Email'
@@ -24,6 +24,7 @@ export default function Registro() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ nombre_taller: '', name: '', email: '', password: '', password_confirmation: '' })
   const [showPassword, setShowPassword] = useState(false)
+  const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -39,6 +40,11 @@ export default function Registro() {
 
     if (form.password !== form.password_confirmation) {
       setError('Las contraseñas no coinciden.')
+      return
+    }
+
+    if (!aceptaTerminos) {
+      setError('Tenés que aceptar los Términos y la Política de Privacidad para continuar.')
       return
     }
 
@@ -158,7 +164,23 @@ export default function Registro() {
                   fullWidth
                   slotProps={{ input: { startAdornment: <InputAdornment position="start"><LockIcon fontSize="small" /></InputAdornment> } }}
                 />
-                <Button type="submit" variant="contained" size="large" fullWidth disabled={submitting}>
+                <FormControlLabel
+                  control={<Checkbox checked={aceptaTerminos} onChange={(e) => setAceptaTerminos(e.target.checked)} size="small" />}
+                  label={
+                    <Typography variant="caption" sx={{ color: textSecondary }}>
+                      Leí y acepto los{' '}
+                      <Typography component={RouterLink} to="/terminos" target="_blank" variant="caption" sx={{ color: 'primary.main', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                        Términos y Condiciones
+                      </Typography>{' '}
+                      y la{' '}
+                      <Typography component={RouterLink} to="/privacidad" target="_blank" variant="caption" sx={{ color: 'primary.main', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                        Política de Privacidad
+                      </Typography>
+                    </Typography>
+                  }
+                  sx={{ alignItems: 'flex-start', ml: 0, '& .MuiCheckbox-root': { pt: 0 } }}
+                />
+                <Button type="submit" variant="contained" size="large" fullWidth disabled={submitting || !aceptaTerminos}>
                   {submitting ? 'Creando taller…' : 'Crear taller'}
                 </Button>
               </Stack>

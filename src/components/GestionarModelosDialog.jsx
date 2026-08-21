@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Button, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
@@ -12,6 +12,16 @@ export default function GestionarModelosDialog({ open, onClose, onChanged }) {
   const notify = useNotify()
   const modelos = useAsyncData(listModelos)
   const marcas = useAsyncData(listMarcas)
+  const refreshModelos = modelos.refresh
+  const refreshMarcas = marcas.refresh
+
+  useEffect(() => {
+    if (open) {
+      refreshMarcas()
+      refreshModelos()
+    }
+  }, [open, refreshMarcas, refreshModelos])
+
   const [nombre, setNombre] = useState('')
   const [marcaId, setMarcaId] = useState('')
   const [busy, setBusy] = useState(false)

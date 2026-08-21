@@ -27,6 +27,8 @@ const Servicios = lazy(() => import('./pages/Servicios/Servicios'))
 const Configuracion = lazy(() => import('./pages/Configuracion/Configuracion'))
 const SuperadminTalleres = lazy(() => import('./pages/Superadmin/SuperadminTalleres'))
 const Bienvenida = lazy(() => import('./pages/Bienvenida/Bienvenida'))
+const Terminos = lazy(() => import('./pages/Legal/Terminos'))
+const Privacidad = lazy(() => import('./pages/Legal/Privacidad'))
 
 function PageFallback() {
   return (
@@ -44,6 +46,8 @@ export default function App() {
         <Route path="/taller/:tallerSlug" element={<TallerLanding />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+        <Route path="/terminos" element={<Terminos />} />
+        <Route path="/privacidad" element={<Privacidad />} />
         <Route path="/seleccionar-taller" element={<SeleccionarTaller />} />
         <Route path="/agendar" element={<AgendarTurno />} />
         <Route path="/agendar/:tallerSlug" element={<AgendarTurno />} />
