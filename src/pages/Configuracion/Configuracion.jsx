@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, Grid, IconButton, InputAdornment, Paper, Skeleton, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import { Box, Button, Chip, Grid, IconButton, InputAdornment, Paper, Skeleton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import StoreIcon from '@mui/icons-material/Store'
 import LockIcon from '@mui/icons-material/Lock'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
@@ -12,6 +12,18 @@ import { useNotify } from '../../context/useNotify'
 import PageHeader from '../../components/PageHeader'
 
 const emptyPasswordForm = { current_password: '', password: '', password_confirmation: '' }
+
+// Orden de exhibición lunes-a-domingo; el value es el dayOfWeek de Carbon en
+// el backend (0=domingo), no el orden de la semana argentina.
+const DIAS = [
+  { value: 1, label: 'Lun' },
+  { value: 2, label: 'Mar' },
+  { value: 3, label: 'Mié' },
+  { value: 4, label: 'Jue' },
+  { value: 5, label: 'Vie' },
+  { value: 6, label: 'Sáb' },
+  { value: 0, label: 'Dom' },
+]
 
 export default function Configuracion() {
   const notify = useNotify()
@@ -29,7 +41,16 @@ export default function Configuracion() {
   }
 
   const config = useAsyncData(getConfiguracion, { errorMessage: 'No se pudo cargar la configuración del negocio.' })
-  const [negocio, setNegocio] = useState({ nombre_negocio: '', tipo_vehiculo: '', direccion: '', whatsapp: '', whatsapp_phone_number_id: '', horario: '' })
+  const [negocio, setNegocio] = useState({
+    nombre_negocio: '',
+    tipo_vehiculo: '',
+    direccion: '',
+    whatsapp: '',
+    whatsapp_phone_number_id: '',
+    dias_laborables: [1, 2, 3, 4, 5],
+    hora_apertura: '08:00',
+    hora_cierre: '20:00',
+  })
   const [guardandoNegocio, setGuardandoNegocio] = useState(false)
 
   useEffect(() => {
@@ -40,10 +61,18 @@ export default function Configuracion() {
         direccion: config.data.direccion ?? '',
         whatsapp: config.data.whatsapp ?? '',
         whatsapp_phone_number_id: config.data.whatsapp_phone_number_id ?? '',
-        horario: config.data.horario ?? '',
+        dias_laborables: config.data.dias_laborables ?? [1, 2, 3, 4, 5],
+        hora_apertura: config.data.hora_apertura ?? '08:00',
+        hora_cierre: config.data.hora_cierre ?? '20:00',
       })
     }
   }, [config.data])
+
+  const toggleDia = (dia) =>
+    setNegocio((prev) => ({
+      ...prev,
+      dias_laborables: prev.dias_laborables.includes(dia) ? prev.dias_laborables.filter((d) => d !== dia) : [...prev.dias_laborables, dia].sort((a, b) => a - b),
+    }))
 
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm)
   const [guardandoPassword, setGuardandoPassword] = useState(false)
@@ -58,7 +87,9 @@ export default function Configuracion() {
         direccion: negocio.direccion.trim() || null,
         whatsapp: negocio.whatsapp.trim() || null,
         whatsapp_phone_number_id: negocio.whatsapp_phone_number_id.trim() || null,
-        horario: negocio.horario.trim() || null,
+        dias_laborables: negocio.dias_laborables,
+        hora_apertura: negocio.hora_apertura,
+        hora_cierre: negocio.hora_cierre,
       })
       notify.success('Datos del negocio actualizados.')
       config.refresh()
@@ -138,13 +169,52 @@ export default function Configuracion() {
                     helperText="Solo si conectaste el bot de WhatsApp: es el ID técnico de Meta para tu número (no el número en sí). Con esto el sistema sabe que los mensajes de ese número son tuyos."
                     fullWidth
                   />
-                  <TextField
-                    label="Horario de atención"
-                    value={negocio.horario}
-                    onChange={(e) => setNegocio((prev) => ({ ...prev, horario: e.target.value }))}
-                    placeholder="Lun a Vie 9 a 18hs"
-                    fullWidth
-                  />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                      Días de atención
+                    </Typography>
+                    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                      {DIAS.map((dia) => (
+                        <Chip
+                          key={dia.value}
+                          label={dia.label}
+                          onClick={() => toggleDia(dia.value)}
+                          color={negocio.dias_laborables.includes(dia.value) ? 'primary' : 'default'}
+                          variant={negocio.dias_laborables.includes(dia.value) ? 'filled' : 'outlined'}
+                        />
+                      ))}
+                    </Stack>
+                    {negocio.dias_laborables.length === 0 && (
+                      <Typography variant="caption" color="error">
+                        Elegí al menos un día.
+                      </Typography>
+                    )}
+                  </Box>
+                  <Stack direction="row" spacing={2}>
+                    <TextField
+                      label="Hora de apertura"
+                      type="time"
+                      value={negocio.hora_apertura}
+                      onChange={(e) => setNegocio((prev) => ({ ...prev, hora_apertura: e.target.value }))}
+                      fullWidth
+                      required
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                    <TextField
+                      label="Hora de cierre"
+                      type="time"
+                      value={negocio.hora_cierre}
+                      onChange={(e) => setNegocio((prev) => ({ ...prev, hora_cierre: e.target.value }))}
+                      fullWidth
+                      required
+                      error={negocio.hora_cierre <= negocio.hora_apertura}
+                      helperText={negocio.hora_cierre <= negocio.hora_apertura ? 'Tiene que ser después de la apertura' : ' '}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Esto define tanto lo que ven tus clientes en tu página pública como los horarios que se ofrecen para pedir un turno — fuera de este rango no se puede reservar.
+                  </Typography>
                   {linkPublico && (
                     <TextField
                       label="Página pública para reservar turnos"
@@ -172,7 +242,11 @@ export default function Configuracion() {
                     />
                   )}
                   <Box>
-                    <Button type="submit" variant="contained" disabled={guardandoNegocio || !negocio.nombre_negocio.trim()}>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={guardandoNegocio || !negocio.nombre_negocio.trim() || negocio.dias_laborables.length === 0 || negocio.hora_cierre <= negocio.hora_apertura}
+                    >
                       {guardandoNegocio ? 'Guardando…' : 'Guardar'}
                     </Button>
                   </Box>
