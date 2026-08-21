@@ -29,7 +29,16 @@ const NAV_LINKS = [
   { label: 'Contacto', id: 'contacto' },
 ]
 
-const singular = (palabra) => palabra.replace(/s$/, '')
+// Si tipo_vehiculo es una sola palabra ("motos") se singulariza y se pasa a
+// minúscula ("moto"). Si es una frase con varios tipos ("Autos y motos"),
+// sacarle la "s" final a la frase entera rompe la gramática ("tu Autos y
+// moto") — en ese caso se usa "vehículo" como término genérico.
+const singular = (frase) => {
+  const limpio = String(frase ?? '').trim()
+  const palabras = limpio.split(/\s+/)
+  if (palabras.length !== 1) return 'vehículo'
+  return limpio.toLowerCase().replace(/s$/, '')
+}
 
 const porQue = [
   'Diagnóstico honesto y presupuesto claro',
