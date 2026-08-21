@@ -50,6 +50,8 @@ import { useTokenExpirationCheck } from '../hooks/useTokenExpirationCheck'
 import HelpDialog from '../components/HelpDialog'
 import BrandMark from '../components/BrandMark'
 import TallerSuspendidoView from '../components/TallerSuspendidoView'
+import SuscripcionVencidaView from '../components/SuscripcionVencidaView'
+import { getSuscripcionEstado } from '../services/suscripcionApi'
 import { initials } from '../utils/format'
 import { SAFETY, SAFETY_DEEP, FONT_MONO, pegboard, getWorkshopTheme } from '../theme/workshopBrand'
 
@@ -94,7 +96,7 @@ const sections = [
 ]
 
 export default function ProtectedLayout() {
-  const { token, loading, user, role, memberships, activeTaller, activeTallerId, isSuperadmin, logout } = useAuth()
+  const { token, loading, user, role, memberships, activeTaller, activeTallerId, isSuperadmin, logout, suscripcionVencida } = useAuth()
   const { mode, toggleColorMode } = useColorMode()
   const workshopTheme = getWorkshopTheme(mode)
   const location = useLocation()
@@ -109,11 +111,19 @@ export default function ProtectedLayout() {
       return {}
     }
   })
+  const [montoMensual, setMontoMensual] = useState(null)
   useTokenExpirationCheck()
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(desktopOpen))
   }, [desktopOpen])
+
+  useEffect(() => {
+    if (!suscripcionVencida) return
+    getSuscripcionEstado()
+      .then((data) => setMontoMensual(data.monto_mensual))
+      .catch(() => {})
+  }, [suscripcionVencida])
 
   const toggleSection = (key) =>
     setCollapsedSections((prev) => {
@@ -174,6 +184,10 @@ export default function ProtectedLayout() {
         }
       />
     )
+  }
+
+  if (suscripcionVencida) {
+    return <SuscripcionVencidaView mode={mode} montoMensual={montoMensual} onLogout={logout} />
   }
 
   const renderSidebar = (onClose, onNavigate = () => {}) => (

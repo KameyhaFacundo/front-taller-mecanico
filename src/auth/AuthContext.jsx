@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
   const [memberships, setMemberships] = useState([])
   const [activeTallerId, setActiveTallerIdState] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [suscripcionVencida, setSuscripcionVencida] = useState(false)
 
   useEffect(() => {
     const storedToken = localStorage.getItem('access_token')
@@ -95,16 +96,19 @@ export function AuthProvider({ children }) {
       setActiveTallerIdState(null)
     }
     const handleTallerInvalido = () => setActiveTallerIdState(null)
+    const handleSuscripcionVencida = () => setSuscripcionVencida(true)
 
     window.addEventListener('auth:unauthorized', handleUnauthorized)
     window.addEventListener('taller:seleccion-requerida', handleTallerInvalido)
     window.addEventListener('taller:invalido', handleTallerInvalido)
     window.addEventListener('taller:suspendido', handleTallerInvalido)
+    window.addEventListener('taller:suscripcion-vencida', handleSuscripcionVencida)
     return () => {
       window.removeEventListener('auth:unauthorized', handleUnauthorized)
       window.removeEventListener('taller:seleccion-requerida', handleTallerInvalido)
       window.removeEventListener('taller:invalido', handleTallerInvalido)
       window.removeEventListener('taller:suspendido', handleTallerInvalido)
+      window.removeEventListener('taller:suscripcion-vencida', handleSuscripcionVencida)
     }
   }, [])
 
@@ -121,6 +125,7 @@ export function AuthProvider({ children }) {
     setUser(data.user)
     setMemberships(freshMemberships)
     setActiveTallerIdState(nextActiveTallerId)
+    setSuscripcionVencida(false)
 
     return { user: data.user, memberships: freshMemberships }
   }
@@ -131,6 +136,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     setMemberships([])
     setActiveTallerIdState(null)
+    setSuscripcionVencida(false)
   }
 
   const setActiveTaller = (tallerId) => {
@@ -151,6 +157,7 @@ export function AuthProvider({ children }) {
     role: activeTaller?.role ?? null,
     isSuperadmin: Boolean(user?.is_superadmin),
     loading,
+    suscripcionVencida,
     login,
     logout,
     setActiveTaller,

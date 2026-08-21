@@ -46,6 +46,29 @@ import { FONT_DISPLAY, FONT_MONO, SAFETY } from '../../theme/workshopBrand'
 // Se asume activo salvo que el backend indique explícitamente `false`.
 const esActivo = (taller) => taller.activo !== false
 
+const SUSCRIPCION_INFO = {
+  trial: { label: 'Prueba', color: 'info' },
+  activa: { label: 'Activa', color: 'success' },
+  vencida: { label: 'Vencida', color: 'error' },
+}
+
+const diasRestantes = (fecha) => {
+  if (!fecha) return null
+  const ms = new Date(fecha).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / 86_400_000))
+}
+
+const suscripcionSubtitulo = (taller) => {
+  if (taller.suscripcion_estado === 'trial') {
+    const dias = diasRestantes(taller.trial_termina_en)
+    return dias === null ? null : dias === 0 ? 'Vence hoy' : `${dias} día${dias === 1 ? '' : 's'} restantes`
+  }
+  if (taller.suscripcion_estado === 'activa' && taller.ultimo_pago_en) {
+    return `Último pago: ${fmtDate(taller.ultimo_pago_en)}`
+  }
+  return null
+}
+
 function StatCard({ icon: Icon, label, value, color = SAFETY, suffix = null }) {
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>
@@ -216,6 +239,7 @@ export default function SuperadminTalleres() {
                   <TableCell align="right">Clientes</TableCell>
                   <TableCell align="right">Órdenes</TableCell>
                   <TableCell align="right">Ingresos</TableCell>
+                  <TableCell align="right">Suscripción</TableCell>
                   <TableCell align="right">Estado</TableCell>
                   <TableCell align="right">Acciones</TableCell>
                 </TableRow>
@@ -256,6 +280,15 @@ export default function SuperadminTalleres() {
                     <TableCell align="right">
                       <Tooltip title={`${fmtMoney(taller.ingresos_mes)} este mes`}>
                         <span>{fmtMoney(taller.ingresos_total)}</span>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title={suscripcionSubtitulo(taller) ?? ''}>
+                        <Chip
+                          label={SUSCRIPCION_INFO[taller.suscripcion_estado]?.label ?? taller.suscripcion_estado}
+                          size="small"
+                          color={SUSCRIPCION_INFO[taller.suscripcion_estado]?.color ?? 'default'}
+                        />
                       </Tooltip>
                     </TableCell>
                     <TableCell align="right">
@@ -310,12 +343,19 @@ export default function SuperadminTalleres() {
                         Alta: {fmtDate(taller.created_at)}
                       </Typography>
                     </Box>
-                    <Chip
-                      label={esActivo(taller) ? 'Activo' : 'Pausado'}
-                      size="small"
-                      color={esActivo(taller) ? 'success' : 'default'}
-                      variant={esActivo(taller) ? 'filled' : 'outlined'}
-                    />
+                    <Stack spacing={0.5} sx={{ alignItems: 'flex-end' }}>
+                      <Chip
+                        label={esActivo(taller) ? 'Activo' : 'Pausado'}
+                        size="small"
+                        color={esActivo(taller) ? 'success' : 'default'}
+                        variant={esActivo(taller) ? 'filled' : 'outlined'}
+                      />
+                      <Chip
+                        label={SUSCRIPCION_INFO[taller.suscripcion_estado]?.label ?? taller.suscripcion_estado}
+                        size="small"
+                        color={SUSCRIPCION_INFO[taller.suscripcion_estado]?.color ?? 'default'}
+                      />
+                    </Stack>
                   </Stack>
 
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5, flexWrap: 'wrap' }}>

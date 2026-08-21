@@ -44,6 +44,11 @@ axiosClient.interceptors.response.use(
       // El taller activo fue suspendido mientras la sesión estaba abierta.
       localStorage.removeItem('active_taller_id')
       window.dispatchEvent(new Event('taller:suspendido'))
+    } else if (status === 402) {
+      // Trial de 7 días vencido sin suscripción activa. No se limpia
+      // active_taller_id: el taller sigue siendo válido, solo hay que pagar
+      // para volver a usarlo.
+      window.dispatchEvent(new Event('taller:suscripcion-vencida'))
     }
     return Promise.reject(error)
   },
