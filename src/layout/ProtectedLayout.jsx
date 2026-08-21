@@ -470,9 +470,20 @@ export default function ProtectedLayout() {
           minHeight: 0,
           height: '100%',
           overflowY: 'auto',
+          // Safari en iOS a veces no deja completar el scroll por inercia
+          // hasta el final real de un <main> con overflow-y:auto anidado
+          // dentro de otro contenedor — el dedo "no llega" al último tramo
+          // aunque el contenido exista. Es el fix estándar para ese caso.
+          WebkitOverflowScrolling: 'touch',
           display: 'flex',
           alignItems: 'flex-start',
           p: { xs: 2, md: 3 },
+          // El botón/elemento final de una página quedaba pegado al borde
+          // inferior real del scroll — en el navegador del celular ese
+          // borde puede coincidir con la barra de gestos/home indicator y
+          // se ve "cortado" aunque ya se llegó al final. Padding extra +
+          // el inset del safe-area en los que lo tienen (notch/gesture bar).
+          pb: { xs: 'calc(72px + env(safe-area-inset-bottom, 0px))', md: 3 },
           mt: { xs: 8, md: 0 },
         }}
       >
