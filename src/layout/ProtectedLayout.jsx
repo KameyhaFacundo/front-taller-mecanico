@@ -72,7 +72,6 @@ const sections = [
       { icon: RequestQuoteIcon, label: 'Presupuestos', path: '/presupuestos' },
     ],
   },
-  { key: 'caja', icon: PaymentsIcon, label: 'Caja', path: '/caja' },
   {
     key: 'inventario',
     icon: Inventory2Icon,
@@ -93,6 +92,7 @@ const sections = [
       { icon: BuildIcon, label: 'Servicios', path: '/servicios' },
     ],
   },
+  { key: 'caja', icon: PaymentsIcon, label: 'Caja', path: '/caja' },
 ]
 
 export default function ProtectedLayout() {
@@ -111,7 +111,7 @@ export default function ProtectedLayout() {
       return {}
     }
   })
-  const [montoMensual, setMontoMensual] = useState(null)
+  const [suscripcionInfo, setSuscripcionInfo] = useState(null)
   useTokenExpirationCheck()
 
   useEffect(() => {
@@ -119,11 +119,11 @@ export default function ProtectedLayout() {
   }, [desktopOpen])
 
   useEffect(() => {
-    if (!suscripcionVencida) return
+    if (!activeTallerId) return
     getSuscripcionEstado()
-      .then((data) => setMontoMensual(data.monto_mensual))
+      .then(setSuscripcionInfo)
       .catch(() => {})
-  }, [suscripcionVencida])
+  }, [activeTallerId, suscripcionVencida])
 
   const toggleSection = (key) =>
     setCollapsedSections((prev) => {
@@ -187,7 +187,7 @@ export default function ProtectedLayout() {
   }
 
   if (suscripcionVencida) {
-    return <SuscripcionVencidaView mode={mode} montoMensual={montoMensual} onLogout={logout} />
+    return <SuscripcionVencidaView mode={mode} montoMensual={suscripcionInfo?.monto_mensual} onLogout={logout} />
   }
 
   const renderSidebar = (onClose, onNavigate = () => {}) => (
@@ -249,6 +249,21 @@ export default function ProtectedLayout() {
         )}
         <HelpDialog variant="menuItem" />
       </List>
+
+      {suscripcionInfo?.estado === 'trial' && suscripcionInfo.dias_restantes != null && (
+        <>
+          <Divider sx={{ borderColor: (t) => t.custom.sidebarBorder }} />
+          <Box sx={{ px: 1.25, py: 1 }}>
+            <Box sx={{ borderRadius: 1.5, px: 1.5, py: 1, bgcolor: (t) => t.custom.sidebarSurface, border: '1px solid', borderColor: SAFETY }}>
+              <Typography sx={{ fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700, color: SAFETY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {suscripcionInfo.dias_restantes === 0
+                  ? 'Prueba gratis vence hoy'
+                  : `${suscripcionInfo.dias_restantes} día${suscripcionInfo.dias_restantes === 1 ? '' : 's'} de prueba gratis`}
+              </Typography>
+            </Box>
+          </Box>
+        </>
+      )}
 
       <Divider sx={{ borderColor: (t) => t.custom.sidebarBorder }} />
       <Box sx={{ px: 1.25, pt: 1.25, pb: 1.25 }}>
