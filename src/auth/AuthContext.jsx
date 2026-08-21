@@ -99,10 +99,12 @@ export function AuthProvider({ children }) {
     window.addEventListener('auth:unauthorized', handleUnauthorized)
     window.addEventListener('taller:seleccion-requerida', handleTallerInvalido)
     window.addEventListener('taller:invalido', handleTallerInvalido)
+    window.addEventListener('taller:suspendido', handleTallerInvalido)
     return () => {
       window.removeEventListener('auth:unauthorized', handleUnauthorized)
       window.removeEventListener('taller:seleccion-requerida', handleTallerInvalido)
       window.removeEventListener('taller:invalido', handleTallerInvalido)
+      window.removeEventListener('taller:suspendido', handleTallerInvalido)
     }
   }, [])
 

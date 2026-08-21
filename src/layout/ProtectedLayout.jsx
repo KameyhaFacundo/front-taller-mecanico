@@ -5,6 +5,7 @@ import {
   AppBar,
   Avatar,
   Box,
+  Button,
   Divider,
   Drawer,
   IconButton,
@@ -45,6 +46,7 @@ import { useColorMode } from '../context/useColorMode'
 import { useTokenExpirationCheck } from '../hooks/useTokenExpirationCheck'
 import HelpDialog from '../components/HelpDialog'
 import BrandMark from '../components/BrandMark'
+import TallerSuspendidoView from '../components/TallerSuspendidoView'
 import { initials } from '../utils/format'
 import { SAFETY, SAFETY_DEEP, FONT_MONO, pegboard, getWorkshopTheme } from '../theme/workshopBrand'
 
@@ -124,6 +126,37 @@ export default function ProtectedLayout() {
   if (loading) return null
   if (!token) return <Navigate to="/login" replace />
   if (!activeTallerId) return <Navigate to="/seleccionar-taller" replace />
+
+  const tallerSuspendido = activeTaller?.activo === false
+  if (tallerSuspendido) {
+    const tieneOtrosActivos = memberships.some((m) => m.taller_id !== activeTallerId && m.activo !== false)
+    return (
+      <TallerSuspendidoView
+        mode={mode}
+        onVolverInicio="/"
+        actions={
+          <>
+            {tieneOtrosActivos && (
+              <Button
+                variant="contained"
+                onClick={() => navigate('/seleccionar-taller', { replace: true })}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                Cambiar de taller
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              onClick={() => logout()}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              Cerrar sesión
+            </Button>
+          </>
+        }
+      />
+    )
+  }
 
   const renderSidebar = (onClose, onNavigate = () => {}) => (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: (t) => t.custom.sidebar, color: (t) => t.custom.sidebarText, ...pegboard('rgba(243,237,224,0.035)') }}>

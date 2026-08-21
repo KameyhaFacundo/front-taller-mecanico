@@ -32,13 +32,18 @@ axiosClient.interceptors.response.use(
     // taller" (taller guardado ya no es válido): se limpia el taller activo
     // y se avisa para mandar a la pantalla de selección, sin cerrar sesión.
     const status = error.response?.status
+    const message = error.response?.data?.message ?? ''
     const hasMemberships = Array.isArray(error.response?.data?.memberships)
     if (status === 422 && hasMemberships) {
       localStorage.removeItem('active_taller_id')
       window.dispatchEvent(new CustomEvent('taller:seleccion-requerida', { detail: error.response.data.memberships }))
-    } else if (status === 403 && error.response?.data?.message === 'No pertenecés a ese taller.') {
+    } else if (status === 403 && message === 'No pertenecés a ese taller.') {
       localStorage.removeItem('active_taller_id')
       window.dispatchEvent(new Event('taller:invalido'))
+    } else if (status === 403 && /suspendido|pausado|fuera de servicio/i.test(message)) {
+      // El taller activo fue suspendido mientras la sesión estaba abierta.
+      localStorage.removeItem('active_taller_id')
+      window.dispatchEvent(new Event('taller:suspendido'))
     }
     return Promise.reject(error)
   },

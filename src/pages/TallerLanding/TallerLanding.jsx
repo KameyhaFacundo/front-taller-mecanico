@@ -20,6 +20,7 @@ import PublicFooter from '../../components/public/PublicFooter'
 import WhatsAppFloat from '../../components/public/WhatsAppFloat'
 import Reveal from '../../components/Reveal'
 import TicketTag from '../../components/TicketTag'
+import TallerSuspendidoView from '../../components/TallerSuspendidoView'
 import { INK, CONCRETE, BAND, PAPER, PAPER_DARK, SAFETY, SAFETY_DEEP, HAZARD, FONT_DISPLAY, FONT_MONO, pegboard, btnSx, getWorkshopTheme } from '../../theme/workshopBrand'
 
 const NAV_LINKS = [
@@ -58,6 +59,21 @@ export default function TallerLanding() {
       <Box sx={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: dark ? INK : CONCRETE }}>
         <CircularProgress />
       </Box>
+    )
+  }
+
+  if (perfil.error) {
+    const suspendido = perfil.error.response?.status === 403
+    return (
+      <TallerSuspendidoView
+        mode={mode}
+        title={suspendido ? 'Taller fuera de servicio' : 'No se pudo cargar el taller'}
+        message={
+          suspendido
+            ? 'Este taller está temporalmente suspendido. Si sos el dueño, contactá al administrador.'
+            : 'Ocurrió un error al cargar la información del taller. Intentá de nuevo más tarde.'
+        }
+      />
     )
   }
 

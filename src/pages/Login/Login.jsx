@@ -45,8 +45,9 @@ export default function Login() {
     try {
       const { memberships } = await login(email, password)
       navigate(memberships.length > 1 ? '/seleccionar-taller' : '/panel', { replace: true })
-    } catch {
-      setError('Credenciales inválidas. Verificá tu correo y contraseña.')
+    } catch (err) {
+      const backendMessage = err.response?.data?.errors?.email?.[0] || err.response?.data?.message
+      setError(backendMessage || 'Credenciales inválidas. Verificá tu correo y contraseña.')
     } finally {
       setSubmitting(false)
     }

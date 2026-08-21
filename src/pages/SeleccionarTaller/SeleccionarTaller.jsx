@@ -1,5 +1,5 @@
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Box, Card, CardActionArea, Stack, Typography } from '@mui/material'
+import { Box, Card, CardActionArea, Chip, Stack, Tooltip, Typography } from '@mui/material'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -27,21 +27,31 @@ export default function SeleccionarTaller() {
         </Typography>
 
         <Stack spacing={1.5}>
-          {memberships.map((membership) => (
-            <Card key={membership.taller_id} variant="outlined">
-              <CardActionArea onClick={() => elegir(membership.taller_id)} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <StorefrontIcon color="primary" />
-                <Box sx={{ textAlign: 'left' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {membership.nombre}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {membership.role === 'admin' ? 'Admin' : 'Empleado'}
-                  </Typography>
-                </Box>
-              </CardActionArea>
-            </Card>
-          ))}
+          {memberships.map((membership) => {
+            const suspendido = membership.activo === false
+            return (
+              <Card key={membership.taller_id} variant="outlined" sx={{ opacity: suspendido ? 0.65 : 1 }}>
+                <Tooltip title={suspendido ? 'Este taller está pausado. Contactá al administrador.' : ''}>
+                  <CardActionArea
+                    onClick={() => !suspendido && elegir(membership.taller_id)}
+                    disabled={suspendido}
+                    sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}
+                  >
+                    <StorefrontIcon color={suspendido ? 'disabled' : 'primary'} />
+                    <Box sx={{ textAlign: 'left', flexGrow: 1 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        {membership.nombre}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {membership.role === 'admin' ? 'Admin' : 'Empleado'}
+                      </Typography>
+                    </Box>
+                    {suspendido && <Chip label="Pausado" size="small" variant="outlined" color="default" />}
+                  </CardActionArea>
+                </Tooltip>
+              </Card>
+            )
+          })}
         </Stack>
       </Box>
     </Box>

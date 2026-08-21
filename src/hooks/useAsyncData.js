@@ -13,6 +13,7 @@ export function useAsyncData(fetcher, { errorMessage = 'No se pudieron cargar lo
   const cachedFresh = Boolean(cacheHit && cacheHit.expires > Date.now())
   const [data, setData] = useState(cachedFresh ? cacheHit.data : null)
   const [loading, setLoading] = useState(!cachedFresh)
+  const [error, setError] = useState(null)
   const notify = useNotify()
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
@@ -50,14 +51,16 @@ export function useAsyncData(fetcher, { errorMessage = 'No se pudieron cargar lo
       }
       const seq = ++seqRef.current
       setLoading(true)
+      setError(null)
       try {
         const result = await fetcherRef.current(params)
         if (seq !== seqRef.current || !mountedRef.current) return null
         if (cacheKey) cacheStore.set(cacheKey, { data: result, expires: Date.now() + ttlMs })
         setData(result)
         return result
-      } catch {
+      } catch (err) {
         if (seq !== seqRef.current || !mountedRef.current) return null
+        setError(err)
         notifyRef.current.error(errorMessageRef.current)
         return null
       } finally {
@@ -76,5 +79,5 @@ export function useAsyncData(fetcher, { errorMessage = 'No se pudieron cargar lo
   // para que la lista quede al día.
   const refresh = useCallback(() => reload(undefined, { bypassCache: true }), [reload])
 
-  return { data, setData, loading, reload, refresh }
+  return { data, setData, loading, error, reload, refresh }
 }

@@ -37,6 +37,7 @@ import MarcaAutocomplete from '../../components/MarcaAutocomplete'
 import ModeloAutocomplete from '../../components/ModeloAutocomplete'
 import TicketDialog from '../../components/TicketDialog'
 import TicketTag from '../../components/TicketTag'
+import TallerSuspendidoView from '../../components/TallerSuspendidoView'
 import { useColorMode } from '../../context/useColorMode'
 import { fmtDate, fmtDateTime, fmtMoney, fmtTime, fmtWeekdayShort } from '../../utils/format'
 import { waLink, waMensajeTurno } from '../../utils/wa'
@@ -302,6 +303,23 @@ export default function AgendarTurno() {
   })()
 
   const volverTo = tallerSlug ? '/taller/' + tallerSlug : '/'
+
+  if (perfil.error) {
+    const suspendido = perfil.error.response?.status === 403
+    return (
+      <ThemeProvider theme={getWorkshopTheme(mode)}>
+        <TallerSuspendidoView
+          mode={mode}
+          title={suspendido ? 'Taller fuera de servicio' : 'No se pudo cargar el taller'}
+          message={
+            suspendido
+              ? 'Este taller está temporalmente suspendido. Si sos el dueño, contactá al administrador.'
+              : 'Ocurrió un error al cargar la información del taller. Intentá de nuevo más tarde.'
+          }
+        />
+      </ThemeProvider>
+    )
+  }
 
   return (
     <ThemeProvider theme={getWorkshopTheme(mode)}>
