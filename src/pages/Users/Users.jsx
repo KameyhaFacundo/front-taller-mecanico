@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Button, Chip, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material'
+import { Box, Button, Card, CardContent, Chip, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -137,41 +137,86 @@ export default function Users() {
           <EmptyState icon={AdminPanelSettingsIcon} title={users.q ? 'Sin resultados' : 'No hay usuarios'} description={users.q ? 'Probá con otro término de búsqueda.' : 'Creá el primer usuario del sistema.'} actionLabel={!users.q ? 'Nuevo usuario' : undefined} onAction={() => openForm(null)} />
         </Paper>
       ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Usuario</TableCell>
-                <TableCell>Correo</TableCell>
-                <TableCell>Rol</TableCell>
-                <TableCell align="center">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filtered.map((targetUser) => (
-                <TableRow key={targetUser.id} hover>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Box sx={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: targetUser.role === 'admin' ? 'primary.main' : 'secondary.main', color: '#fff', fontSize: 13, fontWeight: 700 }}>
-                        {initials(targetUser.name)}
+        <>
+          {/* Desktop: tabla */}
+          <TableContainer component={Paper} variant="outlined" sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Usuario</TableCell>
+                  <TableCell>Correo</TableCell>
+                  <TableCell>Rol</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((targetUser) => (
+                  <TableRow key={targetUser.id} hover>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: targetUser.role === 'admin' ? 'primary.main' : 'secondary.main', color: '#fff', fontSize: 13, fontWeight: 700 }}>
+                          {initials(targetUser.name)}
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {targetUser.name}
+                            {targetUser.id === currentUser?.id && (
+                              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                (vos)
+                              </Typography>
+                            )}
+                          </Typography>
+                        </Box>
                       </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {targetUser.name}
-                          {targetUser.id === currentUser?.id && (
-                            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                              (vos)
-                            </Typography>
-                          )}
-                        </Typography>
-                      </Box>
+                    </TableCell>
+                    <TableCell>{targetUser.email}</TableCell>
+                    <TableCell>
+                      <Chip size="small" label={targetUser.role === 'admin' ? 'Admin' : 'Empleado'} color={targetUser.role === 'admin' ? 'primary' : 'default'} variant={targetUser.role === 'admin' ? 'filled' : 'outlined'} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Editar">
+                        <IconButton size="small" onClick={() => openForm(targetUser)} aria-label="Editar">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" color="error" onClick={() => setDeleteTarget(targetUser)} disabled={targetUser.id === currentUser?.id} aria-label="Eliminar">
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* Mobile: cards — la tabla obligaba a hacer scroll horizontal para
+              llegar a Acciones, dejando editar/borrar prácticamente ocultos. */}
+          <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+            {filtered.map((targetUser) => (
+              <Card key={targetUser.id} variant="outlined">
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                    <Box sx={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: targetUser.role === 'admin' ? 'primary.main' : 'secondary.main', color: '#fff', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                      {initials(targetUser.name)}
                     </Box>
-                  </TableCell>
-                  <TableCell>{targetUser.email}</TableCell>
-                  <TableCell>
-                    <Chip size="small" label={targetUser.role === 'admin' ? 'Admin' : 'Empleado'} color={targetUser.role === 'admin' ? 'primary' : 'default'} variant={targetUser.role === 'admin' ? 'filled' : 'outlined'} />
-                  </TableCell>
-                  <TableCell align="center">
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                        {targetUser.name}
+                        {targetUser.id === currentUser?.id && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            (vos)
+                          </Typography>
+                        )}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
+                        {targetUser.email}
+                      </Typography>
+                    </Box>
+                    <Chip size="small" label={targetUser.role === 'admin' ? 'Admin' : 'Empleado'} color={targetUser.role === 'admin' ? 'primary' : 'default'} variant={targetUser.role === 'admin' ? 'filled' : 'outlined'} sx={{ flexShrink: 0 }} />
+                  </Stack>
+                  <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', mt: 1 }}>
                     <Tooltip title="Editar">
                       <IconButton size="small" onClick={() => openForm(targetUser)} aria-label="Editar">
                         <EditIcon fontSize="small" />
@@ -182,11 +227,12 @@ export default function Users() {
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+
           <Pagination
             count={users.total}
             page={users.page}
@@ -194,8 +240,9 @@ export default function Users() {
             onPageChange={users.onPageChange}
             onRowsPerPageChange={users.onPerPageChange}
             rowsPerPageOptions={[10, 25, 50, 100]}
+            sx={{ mt: 1 }}
           />
-        </TableContainer>
+        </>
       )}
 
       <AppDialog

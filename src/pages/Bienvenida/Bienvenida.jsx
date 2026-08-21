@@ -6,8 +6,6 @@ import BuildIcon from '@mui/icons-material/Build'
 import ShareIcon from '@mui/icons-material/Share'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import DarkModeIcon from '@mui/icons-material/DarkModeOutlined'
-import LightModeIcon from '@mui/icons-material/LightModeOutlined'
 import { useAuth } from '../../hooks/useAuth'
 import { useColorMode } from '../../context/useColorMode'
 import { INK, CONCRETE, SAFETY, FONT_DISPLAY, FONT_MONO, pegboard, btnSx, getWorkshopTheme } from '../../theme/workshopBrand'
@@ -42,7 +40,7 @@ const PASOS = [
 
 export default function Bienvenida() {
   const { token, activeTaller } = useAuth()
-  const { mode, toggleColorMode } = useColorMode()
+  const { mode } = useColorMode()
   const dark = mode === 'dark'
   const [copiado, setCopiado] = useState(false)
 
@@ -68,15 +66,6 @@ export default function Bienvenida() {
   return (
     <ThemeProvider theme={getWorkshopTheme(mode)}>
       <Box sx={{ minHeight: '100svh', bgcolor: pageBg, color: textPrimary, display: 'flex', flexDirection: 'column', ...pegboard(dark ? 'rgba(243,237,224,0.05)' : 'rgba(24,20,15,0.05)') }}>
-        <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: 'center', p: { xs: 2, sm: 3 } }}>
-          <Box />
-          <Tooltip title={dark ? 'Modo claro' : 'Modo oscuro'}>
-            <IconButton size="small" onClick={toggleColorMode} aria-label={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} sx={{ color: textSecondary, border: '1px solid', borderColor, borderRadius: 1 }}>
-              {dark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-        </Stack>
-
         <Container maxWidth="md" sx={{ flex: 1, py: { xs: 4, md: 8 } }}>
           <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 7 } }}>
             <Typography sx={{ display: 'block', fontFamily: FONT_MONO, fontWeight: 600, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: SAFETY, mb: 1.5 }}>
