@@ -4,7 +4,9 @@ import { alpha } from '@mui/material/styles'
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
+  FormControlLabel,
   IconButton,
   Paper,
   Skeleton,
@@ -65,6 +67,11 @@ export default function Clientes() {
   const [sinTurno, setSinTurno] = useState(() => Boolean(location.state?.sinTurno))
   const [clienteModal, setClienteModal] = useState(null)
   const [clienteForm, setClienteForm] = useState(emptyCliente)
+  // Al crear un cliente nuevo, opcionalmente se le carga el vehículo en el
+  // mismo paso — mismo patrón que "cliente nuevo" en Turnos, para no
+  // obligar a un viaje extra a Vehículos apenas se termina de cargar.
+  const [conVehiculoNuevo, setConVehiculoNuevo] = useState(false)
+  const [vehiculoNuevoCliente, setVehiculoNuevoCliente] = useState(emptyVehiculo)
   const [deleteClienteTarget, setDeleteClienteTarget] = useState(null)
   const [deleteClienteBusy, setDeleteClienteBusy] = useState(false)
   const [vehForm, setVehForm] = useState(emptyVehiculo)
@@ -120,6 +127,8 @@ export default function Clientes() {
           }
         : emptyCliente
     )
+    setConVehiculoNuevo(false)
+    setVehiculoNuevoCliente(emptyVehiculo)
     setClienteModal({ cliente, mode, full: null, loading: mode === 'ver' })
     if (mode === 'ver' && cliente) {
       getCliente(cliente.id)
@@ -156,8 +165,24 @@ export default function Clientes() {
           .then((full) => setClienteModal((prev) => (prev?.cliente?.id === clienteForm.id ? { ...prev, cliente: full, full, loading: false } : prev)))
           .catch(() => setClienteModal((prev) => (prev?.cliente?.id === clienteForm.id ? { ...prev, loading: false } : prev)))
       } else {
-        await createCliente(payload)
-        notify.success('Cliente creado.')
+        const cliente = await createCliente(payload)
+        let vehiculoCreado = false
+        if (conVehiculoNuevo && vehiculoNuevoCliente.marca.trim() && vehiculoNuevoCliente.modelo.trim() && vehiculoNuevoCliente.patente.trim()) {
+          const vehPayload = {
+            marca: vehiculoNuevoCliente.marca.trim(),
+            modelo: vehiculoNuevoCliente.modelo.trim(),
+            patente: vehiculoNuevoCliente.patente.trim().toUpperCase(),
+          }
+          if (vehiculoNuevoCliente.anio) vehPayload.anio = Number(vehiculoNuevoCliente.anio)
+          if (vehiculoNuevoCliente.kilometros) vehPayload.kilometros = Number(vehiculoNuevoCliente.kilometros)
+          try {
+            await agregarVehiculoCliente(cliente.id, vehPayload)
+            vehiculoCreado = true
+          } catch (err) {
+            notify.warning(`Cliente creado, pero no se pudo cargar el vehículo: ${err.response?.data?.message || 'intentá de nuevo'}.`)
+          }
+        }
+        notify.success(vehiculoCreado ? 'Cliente y vehículo creados.' : 'Cliente creado.')
         setClienteModal(null)
         clientes.reload()
       }
@@ -472,6 +497,31 @@ export default function Clientes() {
                   Agregar email
                 </Button>
               </Box>
+
+              {!clienteForm.id && (
+                <Box>
+                  <FormControlLabel
+                    control={<Checkbox checked={conVehiculoNuevo} onChange={(e) => setConVehiculoNuevo(e.target.checked)} />}
+                    label={
+                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                        <DirectionsCarIcon fontSize="small" color="primary" />
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          Cargar vehículo
+                        </Typography>
+                      </Stack>
+                    }
+                    sx={{ ml: 0 }}
+                  />
+                  {conVehiculoNuevo && (
+                    <Box sx={{ mt: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        Si la patente ya existe, se vincula automáticamente a este cliente.
+                      </Typography>
+                      <VehiculoFormFields form={vehiculoNuevoCliente} setForm={setVehiculoNuevoCliente} />
+                    </Box>
+                  )}
+                </Box>
+              )}
             </Stack>
           </Box>
         ) : (
