@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@mui/material'
 import BuildIcon from '@mui/icons-material/Build'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import PersonIcon from '@mui/icons-material/Person'
@@ -281,6 +282,7 @@ export default function AgendarTurno() {
     const vehiculo = t.vehiculo
     const serviciosTurno = t?.servicios?.length ? t.servicios : t?.servicio ? [t.servicio] : []
     return {
+      nombreTaller,
       titulo: 'Turno solicitado',
       numero: t.id,
       fecha: fmtDateTime(t.fecha_hora),
@@ -394,7 +396,7 @@ export default function AgendarTurno() {
                 {(() => {
                   const wa = waLink(
                     turno.vehiculo?.cliente?.telefonos?.[0]?.telefono,
-                    `Hola, quiero confirmar mi turno en Impulsa Motors para ${fmtDate(turno.fecha_hora)} a las ${fmtTime(turno.fecha_hora)} (${nombresTurno(turno)}).`
+                    `Hola, quiero confirmar mi turno en ${nombreTaller} para ${fmtDate(turno.fecha_hora)} a las ${fmtTime(turno.fecha_hora)} (${nombresTurno(turno)}).`
                   )
                   return wa ? (
                     <Button component="a" href={wa} target="_blank" rel="noopener noreferrer" variant="contained" color="success" startIcon={<WhatsAppIcon />} fullWidth>

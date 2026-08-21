@@ -8,12 +8,12 @@ import { Box, Divider, Typography } from '@mui/material'
 //   items    → [{ descripcion, detalle, subtotal }]
 //   totales  → [{ label, value }]
 //   notas    → [string] líneas al pie (pagos registrados, estado, ...)
-export default function TicketImpresion({ titulo, numero, fecha, meta = [], items = [], totales = [], notas = [] }) {
+export default function TicketImpresion({ nombreTaller = 'Taller', titulo, numero, fecha, meta = [], items = [], totales = [], notas = [] }) {
   return (
     <Box id="ticket-print" sx={{ bgcolor: '#fff', color: '#111', fontFamily: 'Inter, sans-serif' }}>
       <Box sx={{ textAlign: 'center', mb: 1.5 }}>
         <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-          Impulsa Motors
+          {nombreTaller}
         </Typography>
         <Typography variant="caption" sx={{ color: '#555' }}>
           Gestión integral del taller

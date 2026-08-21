@@ -36,6 +36,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import { createCliente, deleteCliente, getCliente, importClientes, listClientes, updateCliente, updateVehiculo, agregarVehiculoCliente, quitarVehiculoCliente } from '../../services/clientesApi'
 import { createPago } from '../../services/cajaApi'
 import { usePaginatedData } from '../../hooks/usePaginatedData'
+import { useAuth } from '../../hooks/useAuth'
 import { useNotify } from '../../context/useNotify'
 import PageHeader from '../../components/PageHeader'
 import SearchInput from '../../components/SearchInput'
@@ -558,6 +559,8 @@ export default function Clientes() {
 }
 
 function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar, mostrarAgendar }) {
+  const { activeTaller } = useAuth()
+  const nombreTaller = activeTaller?.nombre ?? 'el taller'
   const vehiculos = cliente.vehiculos ?? []
   return (
     <TableRow hover onClick={onView} sx={{ cursor: 'pointer' }}>
@@ -569,7 +572,7 @@ function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar, mo
       <TableCell>
         <Stack spacing={0.5}>
           {(cliente.telefonos ?? []).map((t, i) => {
-            const waUrl = waLink(t.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Impulsa Motors.`)
+            const waUrl = waLink(t.telefono, `Hola ${cliente.nombre} 👋, te escribo desde ${nombreTaller}.`)
             return (
               <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                 <IconButton
@@ -648,10 +651,12 @@ function ClienteRow({ cliente, onView, onEdit, onDelete, onCobrar, onAgendar, mo
 }
 
 function DetailCliente({ cliente, loading, onEdit, onDelete, onAddVeh, onEditVeh, onDeleteVeh, onCobrar }) {
+  const { activeTaller } = useAuth()
+  const nombreTaller = activeTaller?.nombre ?? 'el taller'
   const vehiculos = cliente.vehiculos ?? []
   const deuda = Number(cliente.saldo_total ?? 0)
   const ordenesTotales = vehiculos.reduce((acc, v) => acc + (v.ordenesTrabajo?.length ?? 0), 0)
-  const waUrl = waLink(cliente.telefonos?.[0]?.telefono, `Hola ${cliente.nombre} 👋, te escribo desde Impulsa Motors.`)
+  const waUrl = waLink(cliente.telefonos?.[0]?.telefono, `Hola ${cliente.nombre} 👋, te escribo desde ${nombreTaller}.`)
   return (
     <>
       <Box

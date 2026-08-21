@@ -2,10 +2,13 @@ import { Button } from '@mui/material'
 import PrintIcon from '@mui/icons-material/Print'
 import AppDialog from './AppDialog'
 import TicketImpresion from './TicketImpresion'
+import { useAuth } from '../hooks/useAuth'
 
 // Modal que muestra un ticket imprimible. Recibe las mismas props que
 // TicketImpresion (titulo, numero, fecha, meta, items, totales, notas).
 export default function TicketDialog({ open, onClose, ...ticket }) {
+  const { activeTaller } = useAuth()
+  const nombreTaller = ticket.nombreTaller ?? activeTaller?.nombre ?? 'Taller'
   return (
     <AppDialog
       open={open}
@@ -23,7 +26,7 @@ export default function TicketDialog({ open, onClose, ...ticket }) {
         </>
       }
     >
-      <TicketImpresion {...ticket} />
+      <TicketImpresion {...ticket} nombreTaller={nombreTaller} />
     </AppDialog>
   )
 }
