@@ -2,9 +2,8 @@ import LegalLayout from '../../components/legal/LegalLayout'
 import LegalSection from '../../components/legal/LegalSection'
 
 // Contenido de referencia, redactado para este producto puntual — no
-// reemplaza la revisión de un abogado antes de publicarse. Completar el
-// contacto real antes de salir a producción.
-const CONTACTO = '[completar: email de contacto legal]'
+// reemplaza la revisión de un abogado antes de publicarse.
+const CONTACTO = '381 506-9332 (Gestión de Taller)'
 
 export default function Privacidad() {
   return (
@@ -81,7 +80,7 @@ export default function Privacidad() {
           actualizar o solicitar la eliminación de sus datos personales. Los clientes de un Taller que quieran ejercer
           estos derechos sobre sus propios datos deben dirigirse en primer lugar al Taller donde son clientes, ya que es
           quien administra esa información. Quienes usan el panel como usuarios de un Taller pueden hacerlo directamente
-          desde su cuenta o escribiendo a {CONTACTO}.
+          desde su cuenta o escribiendo al {CONTACTO}.
         </p>
         <p>
           La Agencia de Acceso a la Información Pública, en su carácter de Órgano de Control de la Ley 25.326, tiene la
@@ -102,7 +101,7 @@ export default function Privacidad() {
       </LegalSection>
 
       <LegalSection titulo="10. Contacto">
-        <p>Para consultas sobre esta política de privacidad, escribí a {CONTACTO}.</p>
+        <p>Para consultas sobre esta política de privacidad, escribinos al {CONTACTO}.</p>
       </LegalSection>
     </LegalLayout>
   )

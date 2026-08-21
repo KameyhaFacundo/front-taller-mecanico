@@ -2,10 +2,9 @@ import LegalLayout from '../../components/legal/LegalLayout'
 import LegalSection from '../../components/legal/LegalSection'
 
 // Contenido de referencia, redactado para este producto puntual — no
-// reemplaza la revisión de un abogado antes de publicarse. Completar el
-// contacto y la jurisdicción reales antes de salir a producción.
-const CONTACTO = '[completar: email de contacto legal]'
-const JURISDICCION = '[completar: jurisdicción / tribunales competentes]'
+// reemplaza la revisión de un abogado antes de publicarse.
+const CONTACTO = '381 506-9332 (Gestión de Taller)'
+const JURISDICCION = 'los tribunales ordinarios competentes del domicilio del Taller'
 
 export default function Terminos() {
   return (
@@ -109,7 +108,7 @@ export default function Terminos() {
       </LegalSection>
 
       <LegalSection titulo="11. Contacto">
-        <p>Para consultas sobre estos términos, escribí a {CONTACTO}.</p>
+        <p>Para consultas sobre estos términos, escribinos al {CONTACTO}.</p>
       </LegalSection>
     </LegalLayout>
   )
